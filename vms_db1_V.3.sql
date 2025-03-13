@@ -122,3 +122,5 @@ INSERT INTO employee_appointment (employee_id, appointment_id, role) VALUES
 
 INSERT INTO employee_appointment (employee_id, appointment_id, role) VALUES
 (3, 3, 'Manager');
+
+SELECT * FROM employee_appointment;
