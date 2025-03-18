@@ -6,7 +6,7 @@ CREATE SEQUENCE audit_seq START WITH 1 INCREMENT BY 1;
 -- Create the ROLE table
 CREATE TABLE ROLE (
     role_id NUMBER PRIMARY KEY,
-    role_name VARCHAR2(100) CHECK (role_name IN ('Admin', 'Sales Representative'))
+    role_name VARCHAR2(100) 
 );
 
 -- Create the USER_TABLE 
@@ -47,6 +47,17 @@ INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password)
     VALUES (user_seq.NEXTVAL, 1, 'Khush', 'Khush@example.com', 'khush456');
 INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
     VALUES (user_seq.NEXTVAL, 2, 'Dev', 'Dev@example.com', 'dev789');
+    
+-- Insert sample data into AUDIT_LOG table
+INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+    VALUES (audit_seq.NEXTVAL, 'Sarita', 'USER_TABLE', 'UPDATE', 
+            'Sarita@example.com', 'Sarita.updated@example.com', 
+            TIMESTAMP '2025-03-18 10:00:00');
+
+INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+    VALUES (audit_seq.NEXTVAL, 'Jashan', 'ROLE', 'UPDATE', 
+            'Sales Representative', 'Sales Rep', 
+            TIMESTAMP '2025-03-18 12:00:00');
 
 -- Commit 
 COMMIT;
