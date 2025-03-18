@@ -72,7 +72,6 @@ END role_procedures;
 select * from role;
 
 
-
 -- Execute ROLE Table Procedures
 
 -- Add a new role
@@ -104,9 +103,6 @@ EXEC role_procedures.delete_role(1);
 
 -- Delete a role (will execute successfully)
 EXEC role_procedures.delete_role(3);
-
-
-
 
 
 -- USER_TABLE Procedures Package
@@ -232,9 +228,6 @@ EXEC user_procedures.update_user(7, 'SaritaUpdated', 'Sarita.updated@example.com
 
 -- Delete a user
 EXEC user_procedures.delete_user(7);
-
-
-
 
 
 -- AUDIT_LOG Procedures Package
