@@ -1,21 +1,27 @@
--- Creating ROLE table 
+-- Create sequences for each table
+CREATE SEQUENCE role_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE user_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE audit_seq START WITH 1 INCREMENT BY 1;
+
+-- Create the ROLE table
 CREATE TABLE ROLE (
-    role_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    role_id NUMBER PRIMARY KEY,
     role_name VARCHAR2(100) CHECK (role_name IN ('Admin', 'Sales Representative'))
 );
 
--- Creating USER table 
+-- Create the USER_TABLE 
 CREATE TABLE USER_TABLE (
-    user_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    role_id INT,
+    user_id NUMBER PRIMARY KEY,
+    role_id NUMBER,
     username VARCHAR2(100) NOT NULL,
     Email VARCHAR2(100) UNIQUE NOT NULL,
+    Password VARCHAR2(100) NOT NULL,
     FOREIGN KEY (role_id) REFERENCES ROLE(role_id)
 );
 
--- Creating AUDIT_LOG table 
+-- Create the AUDIT_LOG table 
 CREATE TABLE AUDIT_LOG (
-    audit_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    audit_id NUMBER PRIMARY KEY,
     user_name VARCHAR(100),
     tablename VARCHAR2(100),
     action VARCHAR2(100),
@@ -24,15 +30,25 @@ CREATE TABLE AUDIT_LOG (
     Updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  
 );
 
--- Inserting sample data into ROLE table
-INSERT INTO ROLE (role_name) VALUES ('Admin');
-INSERT INTO ROLE (role_name) VALUES ('Sales Representative');
+-- Insert sample data into ROLE table 
+INSERT INTO ROLE (role_id, role_name) VALUES (role_seq.NEXTVAL, 'Admin');
+INSERT INTO ROLE (role_id, role_name) VALUES (role_seq.NEXTVAL, 'Sales Representative');
 
--- Inserting sample data into USER_TABLE
-INSERT INTO USER_TABLE (role_id, username, Email) VALUES (1, 'Sarita', 'Sarita@example.com');
-INSERT INTO USER_TABLE (role_id, username, Email) VALUES (2, 'Jashan', 'Jashan@example.com');
-INSERT INTO USER_TABLE (role_id, username, Email) VALUES (2, 'Taslima', 'Taslima@example.com');
+-- Insert sample data into USER_TABLE 
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 1, 'Sarita', 'Sarita@example.com', 'pass123');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 2, 'Jashan', 'Jashan@example.com', 'secure456');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 2, 'Taslima', 'Taslima@example.com', 'pwd789');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 1, 'Deep', 'Deep@example.com', 'deeppass1');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 1, 'Khush', 'Khush@example.com', 'khush456');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 2, 'Dev', 'Dev@example.com', 'dev789');
 
+-- Commit 
 COMMIT;
 
 -- Create CUSTOMER table with identity column
