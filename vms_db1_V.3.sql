@@ -59,7 +59,7 @@ INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValu
             'Sales Representative', 'Sales Rep', 
             TIMESTAMP '2025-03-18 12:00:00');
 
--- Commit 
+-- Commit
 COMMIT;
 
 -- Create CUSTOMER table with identity column
