@@ -321,3 +321,257 @@ BEGIN
     CLOSE l_cursor;
 END;
 /
+
+-- CUSTOMER Procedures 
+CREATE OR REPLACE PACKAGE customer_procedures AS
+    PROCEDURE add_customer(p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2);
+    PROCEDURE get_customer(p_cust_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
+    PROCEDURE update_customer(p_cust_id IN NUMBER, p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2);
+    PROCEDURE delete_customer(p_cust_id IN NUMBER);
+END customer_procedures;
+/
+
+CREATE OR REPLACE PACKAGE BODY customer_procedures AS
+    PROCEDURE add_customer(p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2) IS
+    BEGIN
+        INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address)
+        VALUES (customer_seq.NEXTVAL, p_cust_name, p_phone, p_email, p_address);
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20008, 'Error adding customer: ' || SQLERRM);
+    END add_customer;
+
+    PROCEDURE get_customer(p_cust_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR) IS
+    BEGIN
+        IF p_cust_id IS NULL THEN
+            OPEN p_cursor FOR SELECT * FROM CUSTOMER;
+        ELSE
+            OPEN p_cursor FOR SELECT * FROM CUSTOMER WHERE cust_id = p_cust_id;
+        END IF;
+    END get_customer;
+
+    PROCEDURE update_customer(p_cust_id IN NUMBER, p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2) IS
+    BEGIN
+        UPDATE CUSTOMER
+        SET cust_name = p_cust_name,
+            phone = p_phone,
+            email = p_email,
+            address = p_address
+        WHERE cust_id = p_cust_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20009, 'Error updating customer: ' || SQLERRM);
+    END update_customer;
+
+    PROCEDURE delete_customer(p_cust_id IN NUMBER) IS
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_count FROM VEHICLE WHERE cust_id = p_cust_id;
+        IF v_count > 0 THEN
+            RAISE_APPLICATION_ERROR(-20010, 'Cannot delete customer - vehicles exist for this customer');
+        END IF;
+
+        DELETE FROM CUSTOMER WHERE cust_id = p_cust_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20011, 'Error deleting customer: ' || SQLERRM);
+    END delete_customer;
+END customer_procedures;
+/
+
+
+-- VEHICLE Procedures 
+CREATE OR REPLACE PACKAGE vehicle_procedures AS
+    PROCEDURE add_vehicle(p_cust_id IN NUMBER, p_licence_plate IN VARCHAR2, p_make IN VARCHAR2, p_model IN VARCHAR2, p_year IN NUMBER);
+    PROCEDURE get_vehicle(p_vehicle_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
+    PROCEDURE update_vehicle(p_vehicle_id IN NUMBER, p_licence_plate IN VARCHAR2, p_make IN VARCHAR2, p_model IN VARCHAR2, p_year IN NUMBER);
+    PROCEDURE delete_vehicle(p_vehicle_id IN NUMBER);
+END vehicle_procedures;
+/
+
+
+
+CREATE OR REPLACE PACKAGE BODY vehicle_procedures AS
+    PROCEDURE add_vehicle(p_cust_id IN NUMBER, p_licence_plate IN VARCHAR2, p_make IN VARCHAR2, p_model IN VARCHAR2, p_year IN NUMBER) IS
+    BEGIN
+        INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year)
+        VALUES (vehicle_seq.NEXTVAL, p_cust_id, p_licence_plate, p_make, p_model, p_year);
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20012, 'Error adding vehicle: ' || SQLERRM);
+    END add_vehicle;
+
+    PROCEDURE get_vehicle(p_vehicle_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR) IS
+    BEGIN
+        IF p_vehicle_id IS NULL THEN
+            OPEN p_cursor FOR SELECT * FROM VEHICLE;
+        ELSE
+            OPEN p_cursor FOR SELECT * FROM VEHICLE WHERE Vehicle_id = p_vehicle_id;
+        END IF;
+    END get_vehicle;
+
+    PROCEDURE update_vehicle(p_vehicle_id IN NUMBER, p_licence_plate IN VARCHAR2, p_make IN VARCHAR2, p_model IN VARCHAR2, p_year IN NUMBER) IS
+    BEGIN
+        UPDATE VEHICLE
+        SET Licence_plate = p_licence_plate,
+            Make = p_make,
+            Model = p_model,
+            Year = p_year
+        WHERE Vehicle_id = p_vehicle_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20013, 'Error updating vehicle: ' || SQLERRM);
+    END update_vehicle;
+
+    PROCEDURE delete_vehicle(p_vehicle_id IN NUMBER) IS
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_count FROM APPOINTMENT WHERE vehicle_id = p_vehicle_id;
+        IF v_count > 0 THEN
+            RAISE_APPLICATION_ERROR(-20014, 'Cannot delete vehicle - appointments exist for this vehicle');
+        END IF;
+
+        DELETE FROM VEHICLE WHERE Vehicle_id = p_vehicle_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20015, 'Error deleting vehicle: ' || SQLERRM);
+    END delete_vehicle;
+END vehicle_procedures;
+/
+
+
+
+
+-- APPOINTMENT Procedures 
+CREATE OR REPLACE PACKAGE appointment_procedures AS
+    PROCEDURE schedule_appointment(p_cust_id IN NUMBER, p_vehicle_id IN NUMBER, p_app_date IN DATE, p_app_time IN TIMESTAMP, p_status IN VARCHAR2, p_service_id IN NUMBER, p_emp_id IN NUMBER);
+    PROCEDURE get_appointment(p_app_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
+    PROCEDURE update_appointment_status(p_app_id IN NUMBER, p_status IN VARCHAR2);
+    PROCEDURE delete_appointment(p_app_id IN NUMBER);
+END appointment_procedures;
+/
+
+CREATE OR REPLACE PACKAGE BODY appointment_procedures AS
+    PROCEDURE schedule_appointment(p_cust_id IN NUMBER, p_vehicle_id IN NUMBER, p_app_date IN DATE, p_app_time IN TIMESTAMP, p_status IN VARCHAR2, p_service_id IN NUMBER, p_emp_id IN NUMBER) IS
+    BEGIN
+        INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id)
+        VALUES (appointment_seq.NEXTVAL, p_cust_id, p_vehicle_id, p_app_date, p_app_time, p_status, p_service_id, p_emp_id);
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20016, 'Error scheduling appointment: ' || SQLERRM);
+    END schedule_appointment;
+
+    PROCEDURE get_appointment(p_app_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR) IS
+    BEGIN
+        IF p_app_id IS NULL THEN
+            OPEN p_cursor FOR SELECT * FROM APPOINTMENT;
+        ELSE
+            OPEN p_cursor FOR SELECT * FROM APPOINTMENT WHERE app_id = p_app_id;
+        END IF;
+    END get_appointment;
+
+    PROCEDURE update_appointment_status(p_app_id IN NUMBER, p_status IN VARCHAR2) IS
+    BEGIN
+        UPDATE APPOINTMENT
+        SET status = p_status
+        WHERE app_id = p_app_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20017, 'Error updating appointment status: ' || SQLERRM);
+    END update_appointment_status;
+
+    PROCEDURE delete_appointment(p_app_id IN NUMBER) IS
+    BEGIN
+        DELETE FROM APPOINTMENT WHERE app_id = p_app_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20018, 'Error deleting appointment: ' || SQLERRM);
+    END delete_appointment;
+END appointment_procedures;
+/
+
+
+
+-- EMPLOYEE Procedures 
+CREATE OR REPLACE PACKAGE employee_procedures AS
+    PROCEDURE add_employee(p_emp_name IN VARCHAR2, p_position IN VARCHAR2, p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, p_salary IN NUMBER, p_hire_date IN DATE, p_hours_worked IN NUMBER);
+    PROCEDURE get_employee(p_emp_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
+    PROCEDURE update_employee(p_emp_id IN NUMBER, p_emp_name IN VARCHAR2, p_position IN VARCHAR2, p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, p_salary IN NUMBER, p_hire_date IN DATE, p_hours_worked IN NUMBER);
+    PROCEDURE delete_employee(p_emp_id IN NUMBER);
+END employee_procedures;
+/
+
+CREATE OR REPLACE PACKAGE BODY employee_procedures AS
+    PROCEDURE add_employee(p_emp_name IN VARCHAR2, p_position IN VARCHAR2, p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, p_salary IN NUMBER, p_hire_date IN DATE, p_hours_worked IN NUMBER) IS
+    BEGIN
+        INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked)
+        VALUES (employee_seq.NEXTVAL, p_emp_name, p_position, p_emp_phn, p_email, p_salary, p_hire_date, p_hours_worked);
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20019, 'Error adding employee: ' || SQLERRM);
+    END add_employee;
+
+    PROCEDURE get_employee(p_emp_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR) IS
+    BEGIN
+        IF p_emp_id IS NULL THEN
+            OPEN p_cursor FOR SELECT * FROM EMPLOYEE;
+        ELSE
+            OPEN p_cursor FOR SELECT * FROM EMPLOYEE WHERE emp_id = p_emp_id;
+        END IF;
+    END get_employee;
+
+    PROCEDURE update_employee(p_emp_id IN NUMBER, p_emp_name IN VARCHAR2, p_position IN VARCHAR2, p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, p_salary IN NUMBER, p_hire_date IN DATE, p_hours_worked IN NUMBER) IS
+    BEGIN
+        UPDATE EMPLOYEE
+        SET emp_name = p_emp_name,
+            position = p_position,
+            emp_phn = p_emp_phn,
+            email = p_email,
+            salary = p_salary,
+            hire_date = p_hire_date,
+            hours_worked = p_hours_worked
+        WHERE emp_id = p_emp_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20020, 'Error updating employee: ' || SQLERRM);
+    END update_employee;
+
+    PROCEDURE delete_employee(p_emp_id IN NUMBER) IS
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_count FROM APPOINTMENT WHERE emp_id = p_emp_id;
+        IF v_count > 0 THEN
+            RAISE_APPLICATION_ERROR(-20021, 'Cannot delete employee - appointments exist for this employee');
+        END IF;
+
+        DELETE FROM EMPLOYEE WHERE emp_id = p_emp_id;
+        COMMIT;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20022, 'Error deleting employee: ' || SQLERRM);
+    END delete_employee;
+END employee_procedures;
+/
