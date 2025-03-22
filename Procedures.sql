@@ -385,6 +385,38 @@ CREATE OR REPLACE PACKAGE BODY customer_procedures AS
 END customer_procedures;
 /
 
+-- Add a new customer
+SET SERVEROUTPUT ON;
+EXEC customer_procedures.add_customer('Khush Santoki', '9865321470', 'Khush@example.com', '123 vadnagar Street');
+
+-- Get all customers
+SET SERVEROUTPUT ON;
+DECLARE
+    l_cursor SYS_REFCURSOR;
+    l_cust_id NUMBER;
+    l_cust_name VARCHAR2(100);
+    l_phone VARCHAR2(20);
+    l_email VARCHAR2(100);
+    l_address VARCHAR2(255);
+BEGIN
+    customer_procedures.get_customer(NULL, l_cursor);
+    LOOP
+        FETCH l_cursor INTO l_cust_id, l_cust_name, l_phone, l_email, l_address;
+        EXIT WHEN l_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('Customer ID: ' || l_cust_id || ', Name: ' || l_cust_name || ', Phone: ' || l_phone || ', Email: ' || l_email || ', Address: ' || l_address);
+    END LOOP;
+    CLOSE l_cursor;
+END;
+/
+
+-- Update a customer
+SET SERVEROUTPUT ON;
+EXEC customer_procedures.update_customer(2, 'Vatsal Mistry', '8765432109', 'vatsal@example.com', '456 Oak Avenue');
+
+-- Delete a customer 
+SET SERVEROUTPUT ON;
+EXEC customer_procedures.delete_customer(5);
+
 
 -- VEHICLE Procedures 
 CREATE OR REPLACE PACKAGE vehicle_procedures AS
@@ -452,6 +484,37 @@ END vehicle_procedures;
 /
 
 
+-- Add a new vehicle
+EXEC vehicle_procedures.add_vehicle(4, 'ABC123', 'Toyota', 'Camry', 2022);
+
+-- Get all vehicles
+SET SERVEROUTPUT ON;
+DECLARE
+    l_cursor SYS_REFCURSOR;
+    l_vehicle_id NUMBER;
+    l_cust_id NUMBER;
+    l_licence_plate VARCHAR2(50);
+    l_make VARCHAR2(50);
+    l_model VARCHAR2(50);
+    l_year NUMBER;
+BEGIN
+    vehicle_procedures.get_vehicle(NULL, l_cursor);
+    LOOP
+        FETCH l_cursor INTO l_vehicle_id, l_cust_id, l_licence_plate, l_make, l_model, l_year;
+        EXIT WHEN l_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('Vehicle ID: ' || l_vehicle_id || ', License Plate: ' || l_licence_plate || ', Make: ' || l_make || ', Model: ' || l_model || ', Year: ' || l_year);
+    END LOOP;
+    CLOSE l_cursor;
+END;
+/
+
+-- Update a vehicle
+EXEC vehicle_procedures.update_vehicle(1, 'XYZ789', 'Honda', 'Accord', 2021);
+
+-- Delete a vehicle (will fail if appointments exist)
+EXEC vehicle_procedures.delete_vehicle(4);
+
+
 
 
 -- APPOINTMENT Procedures 
@@ -507,6 +570,38 @@ CREATE OR REPLACE PACKAGE BODY appointment_procedures AS
     END delete_appointment;
 END appointment_procedures;
 /
+
+-- Schedule a new appointment
+EXEC appointment_procedures.schedule_appointment(1, 1, TO_DATE('23-10-01', 'YYYY-MM-DD'), TO_TIMESTAMP('11:30:00', 'HH24:MI:SS'), 'Scheduled', 1, 1);
+
+-- Get all appointments
+SET SERVEROUTPUT ON;
+DECLARE
+    l_cursor SYS_REFCURSOR;
+    l_app_id NUMBER;
+    l_cust_id NUMBER;
+    l_vehicle_id NUMBER;
+    l_app_date DATE;
+    l_app_time TIMESTAMP;
+    l_status VARCHAR2(50);
+    l_service_id NUMBER;
+    l_emp_id NUMBER;
+BEGIN
+    appointment_procedures.get_appointment(NULL, l_cursor);
+    LOOP
+        FETCH l_cursor INTO l_app_id, l_cust_id, l_vehicle_id, l_app_date, l_app_time, l_status, l_service_id, l_emp_id;
+        EXIT WHEN l_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('Appointment ID: ' || l_app_id || ', Date: ' || l_app_date || ', Time: ' || l_app_time || ', Status: ' || l_status);
+    END LOOP;
+    CLOSE l_cursor;
+END;
+/
+
+-- Update appointment status
+EXEC appointment_procedures.update_appointment_status(1, 'Completed');
+
+-- Delete an appointment
+EXEC appointment_procedures.delete_appointment(22);
 
 
 
@@ -575,6 +670,43 @@ CREATE OR REPLACE PACKAGE BODY employee_procedures AS
     END delete_employee;
 END employee_procedures;
 /
+
+SET SERVEROUTPUT ON;
+
+-- Add a new employee
+EXEC employee_procedures.add_employee('Alice Johnson', 'Manager', '1928374650', 'alice@example.com', 60000.00, TO_DATE('2018-03-25', 'YYYY-MM-DD'), 45.75);
+
+-- Get all employees
+SET SERVEROUTPUT ON;
+DECLARE
+    l_cursor SYS_REFCURSOR;
+    l_emp_id NUMBER;
+    l_emp_name VARCHAR2(100);
+    l_position VARCHAR2(50);
+    l_emp_phn VARCHAR2(20);
+    l_email VARCHAR2(100);
+    l_salary NUMBER;
+    l_hire_date DATE;
+    l_hours_worked NUMBER;
+BEGIN
+    employee_procedures.get_employee(NULL, l_cursor);
+    LOOP
+        FETCH l_cursor INTO l_emp_id, l_emp_name, l_position, l_emp_phn, l_email, l_salary, l_hire_date, l_hours_worked;
+        EXIT WHEN l_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('Employee ID: ' || l_emp_id || ', Name: ' || l_emp_name || ', Position: ' || l_position || ', Phone: ' || l_emp_phn);
+    END LOOP;
+    CLOSE l_cursor;
+END;
+/
+
+-- Update an employee
+EXEC employee_procedures.update_employee(1, 'Alice Smith', 'Senior Manager', '1928374651', 'alice.smith@example.com', 65000.00, TO_DATE('2018-03-25', 'YYYY-MM-DD'), 48.00);
+
+-- Delete an employee (will fail if appointments exist)
+EXEC employee_procedures.delete_employee(21);
+
+
+
 
 --INVOICE PROCEDURES
 --Package Specification
