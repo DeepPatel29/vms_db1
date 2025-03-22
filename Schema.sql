@@ -1,6 +1,3 @@
-<<<<<<< HEAD:vms_db1_V.3.sql
--- Creating ROLE table 
-=======
 -- Create sequences for each table
 CREATE SEQUENCE role_seq START WITH 1 INCREMENT BY 1;
 CREATE SEQUENCE user_seq START WITH 1 INCREMENT BY 1;
@@ -17,7 +14,6 @@ CREATE SEQUENCE service_seq START WITH 1 INCREMENT BY 1;
 
 
 -- Create the ROLE table
->>>>>>> e55947a63405d0652b95e102656d05a44556c16b:Schema.sql
 CREATE TABLE ROLE (
     role_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     role_name VARCHAR2(100) CHECK (role_name IN ('Admin', 'Sales Representative'))
@@ -141,10 +137,7 @@ FROM
     APPOINTMENT;
 
 
--- Create EMPLOYEE table with identity column
-=======
 -- Create EMPLOYEE table with sequence
->>>>>>> e55947a63405d0652b95e102656d05a44556c16b:Schema.sql
 CREATE TABLE EMPLOYEE (
     emp_id NUMBER PRIMARY KEY,
     emp_name VARCHAR2(100),
@@ -166,9 +159,7 @@ INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_d
 INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
 (employee_seq.NEXTVAL, 'Alice Johnson', 'Manager', '1928374650', 'alice@example.com', 60000.00, TO_DATE('2018-03-25', 'YYYY-MM-DD'), 45.75);
 
-<<<<<<< HEAD:vms_db1_V.3.sql
--- Create the employee_appointment table without assigned_time
-=======
+
 -- Create SERVICE table
 CREATE TABLE SERVICE (
     service_id NUMBER PRIMARY KEY,
