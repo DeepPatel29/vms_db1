@@ -918,3 +918,363 @@ BEGIN
 END;
 /
 
+---
+
+SET SERVEROUTPUT ON;
+---- SERVICE Table Procedures for add_service
+CREATE OR REPLACE PROCEDURE add_service (
+    p_service_type IN VARCHAR2,
+    p_service_date IN DATE,
+    p_status IN VARCHAR2,
+    p_cost IN NUMBER
+) AS
+BEGIN
+    INSERT INTO Service (service_id, service_type, service_date, status, cost)
+    VALUES (service_seq.NEXTVAL, p_service_type, p_service_date, p_status, p_cost);
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20001, 'Error adding service: ' || SQLERRM);
+END add_service;
+/
+
+---execution for service table procedure for add_service
+BEGIN
+    add_service('Engine Tune-Up', TO_DATE('2025-03-20', 'YYYY-MM-DD'), 'Pending', 150.00);
+END;
+/
+
+select * from service 
+
+------ SERVICE Table Procedures for get service
+
+CREATE OR REPLACE PROCEDURE get_service (
+    p_service_id IN NUMBER DEFAULT NULL,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    IF p_service_id IS NULL THEN
+        OPEN p_cursor FOR
+            SELECT * FROM Service;
+    ELSE
+        OPEN p_cursor FOR
+            SELECT * FROM Service WHERE service_id = p_service_id;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Error retrieving service: ' || SQLERRM);
+END get_service;
+/
+
+
+--execution for get all services 
+DECLARE
+    l_cursor SYS_REFCURSOR;
+    l_service_id NUMBER;
+    l_service_type VARCHAR2(100);
+    l_service_date DATE;
+    l_status VARCHAR2(100);
+    l_cost NUMBER(10,2);
+BEGIN
+    get_service(NULL, l_cursor);
+    LOOP
+        FETCH l_cursor INTO l_service_id, l_service_type, l_service_date, l_status, l_cost;
+        EXIT WHEN l_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('ID: ' || l_service_id || ', Type: ' || l_service_type || 
+                            ', Date: ' || TO_CHAR(l_service_date, 'YYYY-MM-DD') || 
+                            ', Status: ' || l_status || ', Cost: ' || l_cost);
+    END LOOP;
+    CLOSE l_cursor;
+END;
+/
+
+
+------ SERVICE Table Procedures for update service 
+CREATE OR REPLACE PROCEDURE update_service (
+    p_service_id IN NUMBER,
+    p_status IN VARCHAR2,
+    p_cost IN NUMBER
+) AS
+BEGIN
+    UPDATE Service
+    SET status = p_status,
+        cost = p_cost
+    WHERE service_id = p_service_id;
+    
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Service ID not found');
+    END IF;
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20004, 'Error updating service: ' || SQLERRM);
+END update_service;
+/
+
+---execution for update service 
+BEGIN
+    update_service(1, 'Completed', 55.00); 
+END;
+/
+
+select * from service 
+
+
+------ SERVICE Table Procedures for delete service 
+CREATE OR REPLACE PROCEDURE delete_service (
+    p_service_id IN NUMBER
+) AS
+BEGIN
+    DELETE FROM service_inventory WHERE service_id = p_service_id;
+    DELETE FROM Service WHERE service_id = p_service_id;
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Service ID not found');
+    END IF;
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20006, 'Error deleting service: ' || SQLERRM);
+END delete_service;
+/
+
+
+--execution for delete service 
+BEGIN
+    delete_service(1); 
+END;
+/
+
+SELECT * FROM Service WHERE service_id = 1;
+SELECT * FROM service_inventory WHERE service_id = 1; 
+
+
+---- INVENTORY Table Procedures for add_inventory_item 
+CREATE OR REPLACE PROCEDURE add_inventory_item (
+    p_item_name IN VARCHAR2,
+    p_quantity IN NUMBER,
+    p_price_per_unit IN NUMBER
+) AS
+BEGIN
+    INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
+    VALUES (inventory_seq.NEXTVAL, p_item_name, p_quantity, p_price_per_unit);
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20007, 'Error adding inventory item: ' || SQLERRM);
+END add_inventory_item;
+/
+
+
+----Executions add_inventory_item
+BEGIN
+    add_inventory_item('Air Filter', 20, 25.00);
+END;
+/
+
+select * from Inventory
+
+--- INVENTORY Table Procedures for get_inventory 
+CREATE OR REPLACE PROCEDURE get_inventory (
+    p_item_id IN NUMBER DEFAULT NULL,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    IF p_item_id IS NULL THEN
+        OPEN p_cursor FOR
+            SELECT * FROM inventory;
+    ELSE
+        OPEN p_cursor FOR
+            SELECT * FROM inventory WHERE item_id = p_item_id;
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20008, 'Error retrieving inventory: ' || SQLERRM);
+END get_inventory;
+/
+
+
+--execution get_inventory 
+DECLARE
+    l_cursor SYS_REFCURSOR;
+    l_item_id NUMBER;
+    l_item_name VARCHAR2(100);
+    l_quantity NUMBER;
+    l_price_per_unit NUMBER(10,2);
+BEGIN
+    get_inventory(NULL, l_cursor);
+    LOOP
+        FETCH l_cursor INTO l_item_id, l_item_name, l_quantity, l_price_per_unit;
+        EXIT WHEN l_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('ID: ' || l_item_id || ', Name: ' || l_item_name || 
+                            ', Quantity: ' || l_quantity || ', Price: ' || l_price_per_unit);
+    END LOOP;
+    CLOSE l_cursor;
+END;
+/
+
+
+--- INVENTORY Table Procedures for update_inventory 
+CREATE OR REPLACE PROCEDURE update_inventory (
+    p_item_id IN NUMBER,
+    p_quantity IN NUMBER,
+    p_price_per_unit IN NUMBER
+) AS
+BEGIN
+    UPDATE inventory
+    SET quantity = p_quantity,
+        price_per_unit = p_price_per_unit
+    WHERE item_id = p_item_id;
+    
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20009, 'Inventory item ID not found');
+    END IF;
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20010, 'Error updating inventory: ' || SQLERRM);
+END update_inventory;
+/
+
+--execution update_inventory
+BEGIN
+    update_inventory(1, 90, 16.00); 
+END;
+/
+
+select * from inventory
+
+
+--Inventory table procedure for delete_inventory 
+CREATE OR REPLACE PROCEDURE delete_inventory (
+    p_item_id IN NUMBER
+) AS
+BEGIN
+    DELETE FROM inventory
+    WHERE item_id = p_item_id;
+    
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20011, 'Inventory item ID not found');
+    END IF;
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20012, 'Error deleting inventory: ' || SQLERRM);
+END delete_inventory;
+/
+
+--execution for delete_inventory
+BEGIN
+    delete_inventory(1);
+END;
+/
+
+----SERVICE_INVENTORY Table Procedures  use_inventory 
+CREATE OR REPLACE PROCEDURE use_inventory (
+    p_service_id IN NUMBER,
+    p_item_id IN NUMBER,
+    p_quantity_used IN NUMBER
+) AS
+    v_quantity NUMBER;
+BEGIN
+    INSERT INTO service_inventory (service_id, item_id, quantity_used)
+    VALUES (p_service_id, p_item_id, p_quantity_used);
+    UPDATE inventory
+    SET quantity = quantity - p_quantity_used
+    WHERE item_id = p_item_id;
+    
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20013, 'Inventory item ID not found');
+    END IF;
+
+    -- Retrieve the updated inventory quantity
+    SELECT quantity INTO v_quantity
+    FROM inventory
+    WHERE item_id = p_item_id;
+    IF v_quantity < 0 THEN
+        RAISE_APPLICATION_ERROR(-20014, 'Insufficient inventory quantity');
+    END IF;
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20015, 'Error using inventory: ' || SQLERRM);
+END use_inventory;
+/
+--execution for use inventory 
+
+BEGIN
+    use_inventory(1, 2, 3); 
+END;
+/
+
+--procedure for get service_inventory 
+CREATE OR REPLACE PROCEDURE get_service_inventory (
+    p_service_id IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT si.service_id, si.item_id, si.quantity_used, i.item_name, i.price_per_unit
+        FROM service_inventory si
+        JOIN inventory i ON si.item_id = i.item_id
+        WHERE si.service_id = p_service_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20016, 'Error retrieving service inventory: ' || SQLERRM);
+END get_service_inventory;
+/
+
+
+--execution get service_inventory 
+DECLARE
+    l_cursor SYS_REFCURSOR;
+    l_service_id NUMBER;
+    l_item_id NUMBER;
+    l_quantity_used NUMBER;
+    l_item_name VARCHAR2(100);
+    l_price_per_unit NUMBER(10,2);
+BEGIN
+    get_service_inventory(2, l_cursor); 
+    LOOP
+        FETCH l_cursor INTO l_service_id, l_item_id, l_quantity_used, l_item_name, l_price_per_unit;
+        EXIT WHEN l_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('Service ID: ' || l_service_id || ', Item ID: ' || l_item_id || 
+                            ', Qty Used: ' || l_quantity_used || ', Item: ' || l_item_name || 
+                            ', Price: ' || l_price_per_unit);
+    END LOOP;
+    CLOSE l_cursor;
+END;
+/
+
+--procedure for delete service_inventory 
+CREATE OR REPLACE PROCEDURE delete_service_inventory (
+    p_service_id IN NUMBER,
+    p_item_id IN NUMBER
+) AS
+BEGIN
+    DELETE FROM service_inventory
+    WHERE service_id = p_service_id AND item_id = p_item_id;
+    
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20017, 'Service inventory record not found');
+    END IF;
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20018, 'Error deleting service inventory: ' || SQLERRM);
+END delete_service_inventory;
+/
+
+--execution delete service_inventory
+BEGIN
+    delete_service_inventory(1, 2); 
+END;
+/
+

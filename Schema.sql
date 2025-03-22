@@ -304,3 +304,61 @@ VALUES (2, 1);
 
 select * from inventory
 select * from service_inventory
+
+
+-- Create sequences
+CREATE SEQUENCE service_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE inventory_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE service_inventory_seq START WITH 1 INCREMENT BY 1;
+
+-- Create service table with sequence
+CREATE TABLE Service (
+    service_id NUMBER PRIMARY KEY,
+    service_type VARCHAR2(100),
+    service_date DATE,
+    status VARCHAR2(100),
+    cost NUMBER(10,2)
+);
+
+-- Create inventory table with sequence
+CREATE TABLE inventory (
+    item_id NUMBER PRIMARY KEY,
+    item_name VARCHAR2(100),
+    quantity NUMBER,
+    price_per_unit NUMBER(10, 2)
+);
+
+-- Create service_inventory table with sequence
+CREATE TABLE service_inventory (
+    service_id NUMBER PRIMARY KEY,
+    item_id NUMBER,
+    quantity_used NUMBER,
+    CONSTRAINT fk_item_id FOREIGN KEY (item_id)
+    REFERENCES inventory(item_id)
+);
+
+-- Insert into service table using sequence
+INSERT INTO Service (service_id, service_type, service_date, status, cost)
+VALUES (service_seq.NEXTVAL, 'Oil Change', TO_DATE('2024-02-01', 'YYYY-MM-DD'), 'Completed', 50.00);
+
+INSERT INTO Service (service_id, service_type, service_date, status, cost)
+VALUES (service_seq.NEXTVAL, 'Brake Replacement', TO_DATE('2024-02-02', 'YYYY-MM-DD'), 'Pending', 200.00);
+
+INSERT INTO Service (service_id, service_type, service_date, status, cost)
+VALUES (service_seq.NEXTVAL, 'Tire Rotation', TO_DATE('2024-02-03', 'YYYY-MM-DD'), 'Completed', 40.00);
+
+-- Insert into inventory table using sequence
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
+VALUES (inventory_seq.NEXTVAL, 'Engine Oil', 100, 15.50);
+
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
+VALUES (inventory_seq.NEXTVAL, 'Brake Pads', 50, 40.00);
+
+-- Insert into service_inventory table using sequence
+INSERT INTO service_inventory (service_id, item_id, quantity_used)
+VALUES (service_inventory_seq.NEXTVAL, 1, 2);
+
+INSERT INTO service_inventory (service_id, item_id, quantity_used)
+VALUES (service_inventory_seq.NEXTVAL, 2, 1);
+
+
