@@ -15,22 +15,23 @@ CREATE SEQUENCE service_seq START WITH 1 INCREMENT BY 1;
 
 -- Create the ROLE table
 CREATE TABLE ROLE (
-    role_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    role_name VARCHAR2(100) CHECK (role_name IN ('Admin', 'Sales Representative'))
+    role_id NUMBER PRIMARY KEY,
+    role_name VARCHAR2(100) 
 );
 
--- Creating USER table 
+-- Create the USER_TABLE 
 CREATE TABLE USER_TABLE (
-    user_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    role_id INT,
+    user_id NUMBER PRIMARY KEY,
+    role_id NUMBER,
     username VARCHAR2(100) NOT NULL,
     Email VARCHAR2(100) UNIQUE NOT NULL,
+    Password VARCHAR2(100) NOT NULL,
     FOREIGN KEY (role_id) REFERENCES ROLE(role_id)
 );
 
--- Creating AUDIT_LOG table 
+-- Create the AUDIT_LOG table 
 CREATE TABLE AUDIT_LOG (
-    audit_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    audit_id NUMBER PRIMARY KEY,
     user_name VARCHAR(100),
     tablename VARCHAR2(100),
     action VARCHAR2(100),
@@ -39,15 +40,36 @@ CREATE TABLE AUDIT_LOG (
     Updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  
 );
 
--- Inserting sample data into ROLE table
-INSERT INTO ROLE (role_name) VALUES ('Admin');
-INSERT INTO ROLE (role_name) VALUES ('Sales Representative');
+-- Insert sample data into ROLE table 
+INSERT INTO ROLE (role_id, role_name) VALUES (role_seq.NEXTVAL, 'Admin');
+INSERT INTO ROLE (role_id, role_name) VALUES (role_seq.NEXTVAL, 'Sales Representative');
 
--- Inserting sample data into USER_TABLE
-INSERT INTO USER_TABLE (role_id, username, Email) VALUES (1, 'Sarita', 'Sarita@example.com');
-INSERT INTO USER_TABLE (role_id, username, Email) VALUES (2, 'Jashan', 'Jashan@example.com');
-INSERT INTO USER_TABLE (role_id, username, Email) VALUES (2, 'Taslima', 'Taslima@example.com');
+-- Insert sample data into USER_TABLE 
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 1, 'Sarita', 'Sarita@example.com', 'pass123');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 2, 'Jashan', 'Jashan@example.com', 'secure456');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 2, 'Taslima', 'Taslima@example.com', 'pwd789');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 1, 'Deep', 'Deep@example.com', 'deeppass1');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 1, 'Khush', 'Khush@example.com', 'khush456');
+INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password) 
+    VALUES (user_seq.NEXTVAL, 2, 'Dev', 'Dev@example.com', 'dev789');
+    
+-- Insert sample data into AUDIT_LOG table
+INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+    VALUES (audit_seq.NEXTVAL, 'Sarita', 'USER_TABLE', 'UPDATE', 
+            'Sarita@example.com', 'Sarita.updated@example.com', 
+            TIMESTAMP '2025-03-18 10:00:00');
 
+INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+    VALUES (audit_seq.NEXTVAL, 'Jashan', 'ROLE', 'UPDATE', 
+            'Sales Representative', 'Sales Rep', 
+            TIMESTAMP '2025-03-18 12:00:00');
+
+-- Commit
 COMMIT;
 
 
@@ -93,22 +115,6 @@ INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year) VALU
 INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year) VALUES
 (vehicle_seq.NEXTVAL, 3, 'MH03C9101', 'Maruti', 'Swift', 2021);
 
-
-SELECT
-    app_id,
-    cust_id,
-    Vehicle_id,
-    app_date,
-    TO_CHAR(EXTRACT(HOUR FROM app_time), 'FM00') || ':' ||
-    TO_CHAR(EXTRACT(MINUTE FROM app_time), 'FM00') || ':' ||
-    TO_CHAR(EXTRACT(SECOND FROM app_time), 'FM00') AS app_time_simple,
-    Status,
-    service_id,
-    emp_id
-FROM
-    APPOINTMENT;
-
-
 -- Create EMPLOYEE table with sequence
 CREATE TABLE EMPLOYEE (
     emp_id NUMBER PRIMARY KEY,
@@ -130,7 +136,6 @@ INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_d
 
 INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
 (employee_seq.NEXTVAL, 'Alice Johnson', 'Manager', '1928374650', 'alice@example.com', 60000.00, TO_DATE('2018-03-25', 'YYYY-MM-DD'), 45.75);
-
 
 -- Create SERVICE table
 CREATE TABLE SERVICE (
@@ -299,4 +304,3 @@ VALUES (2, 1);
 
 select * from inventory
 select * from service_inventory
-
