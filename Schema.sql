@@ -137,24 +137,6 @@ INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_d
 INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
 (employee_seq.NEXTVAL, 'Alice Johnson', 'Manager', '1928374650', 'alice@example.com', 60000.00, TO_DATE('2018-03-25', 'YYYY-MM-DD'), 45.75);
 
--- Create SERVICE table
-CREATE TABLE SERVICE (
-    service_id NUMBER PRIMARY KEY,
-    service_name VARCHAR2(100),
-    description VARCHAR2(255)
-);
-
--- Insert sample data into SERVICE table
-INSERT INTO SERVICE (service_id, service_name, description) VALUES
-(service_seq.NEXTVAL, 'Oil Change', 'Change engine oil and filter');
-
-INSERT INTO SERVICE (service_id, service_name, description) VALUES
-(service_seq.NEXTVAL, 'Tire Rotation', 'Rotate tires for even wear');
-
-INSERT INTO SERVICE (service_id, service_name, description) VALUES
-(service_seq.NEXTVAL, 'Brake Inspection', 'Inspect brake pads and rotors');
-
-
 -- Create the APPOINTMENT table 
 CREATE TABLE APPOINTMENT (
     app_id NUMBER PRIMARY KEY,
