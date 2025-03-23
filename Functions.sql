@@ -169,6 +169,194 @@ END;
 /
 
 
+---------------------
+---------------------
+--get_customer_count
+CREATE OR REPLACE FUNCTION get_customer_count RETURN NUMBER IS
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM CUSTOMER;
+    RETURN v_count;
+END get_customer_count;
+/
+
+--Execute get_customer_count
+SET SERVEROUTPUT ON;
+DECLARE
+    v_customer_count NUMBER;
+BEGIN
+    v_customer_count := get_customer_count;
+    DBMS_OUTPUT.PUT_LINE('Total number of customers: ' || v_customer_count);
+END;
+/
+
+
+--validate_customer_email
+CREATE OR REPLACE FUNCTION validate_customer_email(p_email IN VARCHAR2) RETURN BOOLEAN IS
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM CUSTOMER WHERE email = p_email;
+    IF v_count = 0 THEN
+        RETURN TRUE; -- Email is unique
+    ELSE
+        RETURN FALSE; -- Email is not unique
+    END IF;
+END validate_customer_email;
+/
+
+--Execute validate_customer_email
+SET SERVEROUTPUT ON;
+DECLARE
+    v_is_unique BOOLEAN;
+BEGIN
+    v_is_unique := validate_customer_email('john@example.com');
+    IF v_is_unique THEN
+        DBMS_OUTPUT.PUT_LINE('The email is unique.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('The email is not unique.');
+    END IF;
+END;
+/
+
+
+--get_vehicle_count
+CREATE OR REPLACE FUNCTION get_vehicle_count(p_cust_id IN NUMBER) RETURN NUMBER IS
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM VEHICLE WHERE cust_id = p_cust_id;
+    RETURN v_count;
+END get_vehicle_count;
+/
+
+--Execute get_vehicle_count
+SET SERVEROUTPUT ON;
+DECLARE
+    v_vehicle_count NUMBER;
+BEGIN
+    v_vehicle_count := get_vehicle_count(1); 
+    DBMS_OUTPUT.PUT_LINE('Number of vehicles: ' || v_vehicle_count);
+END;
+/
+
+
+--get_vehicle_age
+CREATE OR REPLACE FUNCTION get_vehicle_age(p_year IN NUMBER) RETURN NUMBER IS
+    v_age NUMBER;
+BEGIN
+    v_age := EXTRACT(YEAR FROM SYSDATE) - p_year;
+    RETURN v_age;
+END get_vehicle_age;
+/
+
+--Execute get_vehicle_age
+SET SERVEROUTPUT ON;
+DECLARE
+    v_vehicle_age NUMBER;
+BEGIN
+    v_vehicle_age := get_vehicle_age(2020); 
+    DBMS_OUTPUT.PUT_LINE('Age of the vehicle: ' || v_vehicle_age || ' years');
+END;
+/
+
+--APPOINTMENT Table Functions
+--get_appointment_count
+CREATE OR REPLACE FUNCTION get_appointment_count(p_cust_id IN NUMBER) RETURN NUMBER IS
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM APPOINTMENT WHERE cust_id = p_cust_id;
+    RETURN v_count;
+END get_appointment_count;
+/
+
+--Execute get_appointment_count
+SET SERVEROUTPUT ON;
+DECLARE
+    v_appointment_count NUMBER;
+BEGIN
+    v_appointment_count := get_appointment_count(1); -- Replace 1 with the desired customer ID
+    DBMS_OUTPUT.PUT_LINE('Number of appointments for customer: ' || v_appointment_count);
+END;
+/
+
+--is_appointment_valid
+CREATE OR REPLACE FUNCTION is_appointment_valid(p_app_date IN DATE) RETURN BOOLEAN IS
+BEGIN
+    IF p_app_date >= SYSDATE THEN
+        RETURN TRUE; -- Appointment date is valid
+    ELSE
+        RETURN FALSE; -- Appointment date is not valid
+    END IF;
+END is_appointment_valid;
+/
+
+--Execute is_appointment_valid
+SET SERVEROUTPUT ON;
+DECLARE
+    v_is_valid BOOLEAN;
+BEGIN
+    v_is_valid := is_appointment_valid(TO_DATE('2023-10-15', 'YYYY-MM-DD'));
+    IF v_is_valid THEN
+        DBMS_OUTPUT.PUT_LINE('The appointment date is valid.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('The appointment date is not valid.');
+    END IF;
+END;
+/
+
+--EMPLOYEE Table Functions
+--get_employee_salary
+CREATE OR REPLACE FUNCTION get_employee_salary(p_emp_id IN NUMBER) RETURN NUMBER IS
+    v_salary NUMBER;
+BEGIN
+    SELECT salary INTO v_salary FROM EMPLOYEE WHERE emp_id = p_emp_id;
+    RETURN v_salary;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20023, 'No employee found for emp_id: ' || p_emp_id);
+END get_employee_salary;
+/
+
+--Execute get_employee_salary
+SET SERVEROUTPUT ON;
+DECLARE
+    v_salary NUMBER;
+BEGIN
+    v_salary := get_employee_salary(1); 
+    DBMS_OUTPUT.PUT_LINE('Employee salary: ' || v_salary);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE(SQLERRM);
+END;
+/
+
+--get_total_hours_worked
+CREATE OR REPLACE FUNCTION get_total_hours_worked(p_emp_id IN NUMBER) RETURN NUMBER IS
+    v_hours_worked NUMBER;
+BEGIN
+    SELECT hours_worked INTO v_hours_worked FROM EMPLOYEE WHERE emp_id = p_emp_id;
+    RETURN v_hours_worked;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20024, 'No employee found for emp_id: ' || p_emp_id);
+END get_total_hours_worked;
+/
+
+
+--Execute get_total_hours_worked
+SET SERVEROUTPUT ON;
+DECLARE
+    v_hours_worked NUMBER;
+BEGIN
+    v_hours_worked := get_total_hours_worked(1); 
+    DBMS_OUTPUT.PUT_LINE('Total hours worked by employee: ' || v_hours_worked);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE(SQLERRM);
+END;
+/
+
+
+
 ---
 -------
 -- SERVICE Table Function for get service cost by service_id
