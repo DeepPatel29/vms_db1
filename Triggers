@@ -1,0 +1,464 @@
+SET SERVEROUTPUT ON;
+
+-- Trigger for USER_TABLE
+CREATE OR REPLACE TRIGGER trg_user_audit
+FOR INSERT OR UPDATE OR DELETE ON USER_TABLE
+COMPOUND TRIGGER
+    v_user_name VARCHAR2(100);
+
+    BEFORE STATEMENT IS
+    BEGIN
+        v_user_name := USER;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF INSERTING THEN
+            INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+            VALUES (audit_seq.NEXTVAL, v_user_name, 'USER_TABLE', 'INSERT', 
+                    NULL, :NEW.user_id, SYSTIMESTAMP);
+        
+        ELSIF UPDATING THEN
+            -- Handle username change
+            IF (:OLD.username IS NULL AND :NEW.username IS NOT NULL) OR 
+               (:OLD.username IS NOT NULL AND :NEW.username IS NULL) OR 
+               (:OLD.username != :NEW.username) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'USER_TABLE', 'UPDATE', 
+                        :OLD.username, :NEW.username, SYSTIMESTAMP);
+            END IF;
+
+            -- Handle email change
+            IF (:OLD.email IS NULL AND :NEW.email IS NOT NULL) OR 
+               (:OLD.email IS NOT NULL AND :NEW.email IS NULL) OR 
+               (:OLD.email != :NEW.email) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'USER_TABLE', 'UPDATE', 
+                        :OLD.email, :NEW.email, SYSTIMESTAMP);
+            END IF;
+        
+        ELSIF DELETING THEN
+            INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+            VALUES (audit_seq.NEXTVAL, v_user_name, 'USER_TABLE', 'DELETE', 
+                    :OLD.user_id, NULL, SYSTIMESTAMP);
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END AFTER EACH ROW;
+END trg_user_audit;
+/
+
+-- Test USER_TABLE
+BEGIN
+    -- Test INSERT
+    INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password)
+    VALUES (user_seq.NEXTVAL, 2, 'TestUser', 'test@example.com', 'test123');
+    
+    -- Test UPDATE
+    UPDATE USER_TABLE
+    SET username = 'UpdatedUser'
+    WHERE user_id = 7;
+    
+    -- Test DELETE
+    DELETE FROM USER_TABLE 
+    WHERE user_id = 7;
+    
+    -- Commit the changes
+    COMMIT;
+END;
+/
+
+
+-- Trigger for INVOICE
+CREATE OR REPLACE TRIGGER trg_invoice_audit
+FOR INSERT OR UPDATE OR DELETE ON INVOICE
+COMPOUND TRIGGER
+    v_user_name VARCHAR2(100);
+
+    BEFORE STATEMENT IS
+    BEGIN
+        v_user_name := USER;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF INSERTING THEN
+            INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+            VALUES (audit_seq.NEXTVAL, v_user_name, 'INVOICE', 'INSERT', 
+                    NULL, :NEW.invoice_id, SYSTIMESTAMP);
+        
+        ELSIF UPDATING THEN
+            -- Handle total_amount change
+            IF :OLD.total_amount != :NEW.total_amount THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'INVOICE', 'UPDATE', 
+                        TO_CHAR(:OLD.total_amount), TO_CHAR(:NEW.total_amount), SYSTIMESTAMP);
+            END IF;
+        
+        ELSIF DELETING THEN
+            INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+            VALUES (audit_seq.NEXTVAL, v_user_name, 'INVOICE', 'DELETE', 
+                    :OLD.invoice_id, NULL, SYSTIMESTAMP);
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END AFTER EACH ROW;
+END trg_invoice_audit;
+/
+
+
+-- Test INVOICE
+
+    -- Test INSERT
+    INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount)
+    VALUES (invoice_seq.NEXTVAL, 1, 1, SYSDATE, 100.00);
+    
+    -- Test UPDATE
+    UPDATE INVOICE
+    SET total_amount = 150.00
+    WHERE invoice_id = 23;
+    
+    -- Test DELETE
+    DELETE FROM INVOICE 
+    WHERE invoice_id = 23;
+    
+
+
+-- Compound Trigger for PAYMENT
+CREATE OR REPLACE TRIGGER trg_payment_audit
+FOR INSERT OR UPDATE OR DELETE ON PAYMENT
+COMPOUND TRIGGER
+    v_user_name VARCHAR2(100);
+
+    BEFORE STATEMENT IS
+    BEGIN
+        v_user_name := USER;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF INSERTING THEN
+            INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+            VALUES (audit_seq.NEXTVAL, v_user_name, 'PAYMENT', 'INSERT', 
+                    NULL, :NEW.payment_id, SYSTIMESTAMP);
+        
+        ELSIF UPDATING THEN
+            -- Handle amount_paid change
+            IF :OLD.amount_paid != :NEW.amount_paid THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'PAYMENT', 'UPDATE', 
+                        TO_CHAR(:OLD.amount_paid), TO_CHAR(:NEW.amount_paid), SYSTIMESTAMP);
+            END IF;
+
+            -- Handle payment_method change
+            IF (:OLD.payment_method IS NULL AND :NEW.payment_method IS NOT NULL) OR 
+               (:OLD.payment_method IS NOT NULL AND :NEW.payment_method IS NULL) OR 
+               (:OLD.payment_method != :NEW.payment_method) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'PAYMENT', 'UPDATE', 
+                        :OLD.payment_method, :NEW.payment_method, SYSTIMESTAMP);
+            END IF;
+        
+        ELSIF DELETING THEN
+            INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+            VALUES (audit_seq.NEXTVAL, v_user_name, 'PAYMENT', 'DELETE', 
+                     :OLD.payment_id, NULL, SYSTIMESTAMP);
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END AFTER EACH ROW;
+END trg_payment_audit;
+/
+
+
+--TEST Payment
+
+    -- Test INSERT
+    INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, Status)
+    VALUES (payment_seq.NEXTVAL, 1, SYSDATE, 50.00, 'Debit Card', 'Completed');
+    
+    -- Test UPDATE
+    UPDATE PAYMENT
+    SET Payment_method = 'Debit card'
+    WHERE payment_id = 3;
+    
+    -- Test DELETE
+    DELETE FROM PAYMENT 
+    WHERE payment_id = 22;
+    
+
+
+
+-- Trigger for INVENTORY
+CREATE OR REPLACE TRIGGER trg_inventory_audit
+FOR INSERT OR UPDATE OR DELETE ON INVENTORY
+COMPOUND TRIGGER
+    v_user_name VARCHAR2(100);
+
+    BEFORE STATEMENT IS
+    BEGIN
+        v_user_name := USER;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF INSERTING THEN
+            INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+            VALUES (audit_seq.NEXTVAL, v_user_name, 'INVENTORY', 'INSERT', 
+                    NULL, :NEW.item_id, SYSTIMESTAMP);
+        
+        ELSIF UPDATING THEN
+            -- Handle quantity change
+            IF :OLD.quantity != :NEW.quantity THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'INVENTORY', 'UPDATE', 
+                        TO_CHAR(:OLD.quantity), TO_CHAR(:NEW.quantity), SYSTIMESTAMP);
+            END IF;
+        
+        ELSIF DELETING THEN
+            INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+            VALUES (audit_seq.NEXTVAL, v_user_name, 'INVENTORY', 'DELETE', 
+                     :OLD.item_id, NULL, SYSTIMESTAMP);
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END AFTER EACH ROW;
+END trg_inventory_audit;
+/
+
+--TEST Inventory
+
+    -- Test INSERT
+    INSERT INTO INVENTORY (item_id, item_name, quantity, price_per_unit)
+    VALUES (inventory_seq.NEXTVAL, 'TestItem', 10, 25.00); 
+    
+    -- Test UPDATE
+    UPDATE INVENTORY
+    SET quantity = 15
+    WHERE item_name = 'TestItem';
+    
+    -- Test DELETE
+    DELETE FROM INVENTORY 
+    WHERE item_name = 'TestItem';
+    
+
+
+--Trigger for CUSTOMER
+CREATE OR REPLACE TRIGGER trg_customer_audit
+FOR UPDATE ON CUSTOMER
+COMPOUND TRIGGER
+    v_user_name VARCHAR2(100);
+
+    BEFORE STATEMENT IS
+    BEGIN
+        v_user_name := USER;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF UPDATING THEN
+            -- Handle cust_name change
+            IF (:OLD.cust_name IS NULL AND :NEW.cust_name IS NOT NULL) OR 
+               (:OLD.cust_name IS NOT NULL AND :NEW.cust_name IS NULL) OR 
+               (:OLD.cust_name != :NEW.cust_name) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'CUSTOMER', 'UPDATE', 
+                        :OLD.cust_name, :NEW.cust_name, SYSTIMESTAMP);
+            END IF;
+
+            -- Handle email change
+            IF (:OLD.email IS NULL AND :NEW.email IS NOT NULL) OR 
+               (:OLD.email IS NOT NULL AND :NEW.email IS NULL) OR 
+               (:OLD.email != :NEW.email) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'CUSTOMER', 'UPDATE', 
+                        :OLD.email, :NEW.email, SYSTIMESTAMP);
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END AFTER EACH ROW;
+END trg_customer_audit;
+/
+
+
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Sarita', '4644654321', 'Sarita@example.com', '123 Main Road, Karnal');
+
+--TEST Customer
+BEGIN
+-- Test UPDATE
+    UPDATE CUSTOMER
+    SET cust_name = 'UpdatedCust', email = 'updatedcust@example.com'
+    WHERE cust_name = 'Sarita';
+    COMMIT;
+END;
+/
+
+-- Trigger for VEHICLE
+CREATE OR REPLACE TRIGGER trg_vehicle_audit
+FOR UPDATE ON VEHICLE
+COMPOUND TRIGGER
+    v_user_name VARCHAR2(100);
+
+    BEFORE STATEMENT IS
+    BEGIN
+        v_user_name := USER;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF UPDATING THEN
+            -- Handle licence_plate change
+            IF (:OLD.licence_plate IS NULL AND :NEW.licence_plate IS NOT NULL) OR 
+               (:OLD.licence_plate IS NOT NULL AND :NEW.licence_plate IS NULL) OR 
+               (:OLD.licence_plate != :NEW.licence_plate) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'VEHICLE', 'UPDATE', 
+                        :OLD.licence_plate, :NEW.licence_plate, SYSTIMESTAMP);
+            END IF;
+
+            -- Handle make change
+            IF (:OLD.make IS NULL AND :NEW.make IS NOT NULL) OR 
+               (:OLD.make IS NOT NULL AND :NEW.make IS NULL) OR 
+               (:OLD.make != :NEW.make) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'VEHICLE', 'UPDATE', 
+                        :OLD.make, :NEW.make, SYSTIMESTAMP);
+            END IF;
+
+            -- Handle model change
+            IF (:OLD.model IS NULL AND :NEW.model IS NOT NULL) OR 
+               (:OLD.model IS NOT NULL AND :NEW.model IS NULL) OR 
+               (:OLD.model != :NEW.model) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'VEHICLE', 'UPDATE', 
+                        :OLD.model, :NEW.model, SYSTIMESTAMP);
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END AFTER EACH ROW;
+END trg_vehicle_audit;
+/
+
+
+INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year) VALUES
+(vehicle_seq.NEXTVAL, 1, 'TEST123', 'Toyota', 'Corolla', 2020);
+
+
+-- Test VEHICLE
+BEGIN
+--Test update
+    UPDATE VEHICLE
+    SET licence_plate = 'UPDATEDTEST', make = 'Ford'
+    WHERE vehicle_id = 21;
+    
+    COMMIT;
+END;
+/
+
+
+-- Trigger for APPOINTMENT
+CREATE OR REPLACE TRIGGER trg_appointment_audit
+FOR UPDATE ON APPOINTMENT
+COMPOUND TRIGGER
+    v_user_name VARCHAR2(100);
+
+    BEFORE STATEMENT IS
+    BEGIN
+        v_user_name := USER;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF UPDATING THEN
+            -- Handle status change
+            IF (:OLD.status IS NULL AND :NEW.status IS NOT NULL) OR 
+               (:OLD.status IS NOT NULL AND :NEW.status IS NULL) OR 
+               (:OLD.status != :NEW.status) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'APPOINTMENT', 'UPDATE', 
+                        :OLD.status, :NEW.status, SYSTIMESTAMP);
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END AFTER EACH ROW;
+END trg_appointment_audit;
+/
+
+
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 3, 3, TO_DATE('2023-10-10', 'YYYY-MM-DD'), TO_TIMESTAMP('10:45:00', 'HH24:MI:SS'), 'Pending', 3, 3);
+
+
+BEGIN
+    
+    -- Test UPDATE
+    UPDATE APPOINTMENT
+    SET status = 'Completed'
+    WHERE app_id = 41;
+    
+    COMMIT;
+END;
+/
+
+
+-- Trigger for SERVICE
+CREATE OR REPLACE TRIGGER trg_service_audit
+FOR UPDATE ON SERVICE
+COMPOUND TRIGGER
+    v_user_name VARCHAR2(100);
+
+    BEFORE STATEMENT IS
+    BEGIN
+        v_user_name := USER;
+    END BEFORE STATEMENT;
+
+    AFTER EACH ROW IS
+    BEGIN
+        IF UPDATING THEN
+            -- Handle status change
+            IF (:OLD.status IS NULL AND :NEW.status IS NOT NULL) OR 
+               (:OLD.status IS NOT NULL AND :NEW.status IS NULL) OR 
+               (:OLD.status != :NEW.status) THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'SERVICE', 'UPDATE', 
+                        :OLD.status, :NEW.status, SYSTIMESTAMP);
+            END IF;
+
+            -- Handle cost change
+            IF :OLD.cost != :NEW.cost THEN
+                INSERT INTO AUDIT_LOG (audit_id, user_name, tablename, action, oldValue, newValue, Updated_at)
+                VALUES (audit_seq.NEXTVAL, v_user_name, 'SERVICE', 'UPDATE', 
+                        TO_CHAR(:OLD.cost), TO_CHAR(:NEW.cost), SYSTIMESTAMP);
+            END IF;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            NULL;
+    END AFTER EACH ROW;
+END trg_service_audit;
+/
+
+
+INSERT INTO Service (service_id, service_type, service_date, status, cost)
+VALUES (4, 'Test service', TO_DATE(SYSDATE, 'YYYY-MM-DD'), 'Completed', 50.00);
+
+BEGIN
+    -- Test UPDATE
+    UPDATE SERVICE
+    SET cost = 150.00
+    WHERE service_id = 4;
+    
+    COMMIT;
+END;
+/
