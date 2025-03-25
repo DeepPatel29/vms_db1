@@ -1,8 +1,9 @@
 SET SERVEROUTPUT ON;
 
 -- ROLE Table Procedures Package
+
 CREATE OR REPLACE PACKAGE role_procedures AS
-    PROCEDURE add_role(p_role_name IN VARCHAR2);
+    PROCEDURE add_role(p_role_name IN VARCHAR2, p_role_id OUT NUMBER);
     PROCEDURE get_role(p_cursor OUT SYS_REFCURSOR);
     PROCEDURE update_role(p_role_id IN NUMBER, p_new_role_name IN VARCHAR2);
     PROCEDURE delete_role(p_role_id IN NUMBER);
@@ -10,19 +11,39 @@ END role_procedures;
 /
 
 CREATE OR REPLACE PACKAGE BODY role_procedures AS
-    PROCEDURE add_role(p_role_name IN VARCHAR2) IS
+    -- Add Role Procedure
+    PROCEDURE add_role(p_role_name IN VARCHAR2, p_role_id OUT NUMBER) IS
     BEGIN
-        -- Uses sequence to generate unique role_id and inserts new role
+        -- Check if role already exists
+        DECLARE
+            v_count NUMBER;
+        BEGIN
+            SELECT COUNT(*) INTO v_count 
+            FROM ROLE 
+            WHERE role_name = p_role_name;
+            
+            IF v_count > 0 THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Role already exists: ' || p_role_name);
+            END IF;
+        END;
+
+        -- Insert the new role and capture the generated role_id
         INSERT INTO ROLE (role_id, role_name)
-        VALUES (role_seq.NEXTVAL, p_role_name);
-        COMMIT; -- Save the changes
+        VALUES (role_seq.NEXTVAL, p_role_name)
+        RETURNING role_id INTO p_role_id;  -- Get the newly generated role_id
+
+        COMMIT;  -- Save the changes
+
+        -- Display message
+        DBMS_OUTPUT.PUT_LINE('Role added successfully with role_id: ' || p_role_id);
     EXCEPTION
         WHEN OTHERS THEN
             -- Rollback on error and provide error message
             ROLLBACK;
-            RAISE_APPLICATION_ERROR(-20001, 'Error adding role: ' || SQLERRM);
+            RAISE_APPLICATION_ERROR(-20002, 'Error adding role: ' || SQLERRM);
     END add_role;
     
+    -- Get Role Procedure
     PROCEDURE get_role(p_cursor OUT SYS_REFCURSOR) IS
     BEGIN
         -- Opens a cursor with all roles for retrieval
@@ -30,20 +51,35 @@ CREATE OR REPLACE PACKAGE BODY role_procedures AS
         SELECT * FROM ROLE;
     END get_role;
     
+    -- Update Role Procedure
     PROCEDURE update_role(p_role_id IN NUMBER, p_new_role_name IN VARCHAR2) IS
     BEGIN
-        -- Updates role name for specified role_id
+        -- Check if the role exists
+        DECLARE
+            v_count NUMBER;
+        BEGIN
+            SELECT COUNT(*) INTO v_count 
+            FROM ROLE 
+            WHERE role_id = p_role_id;
+            
+            IF v_count = 0 THEN
+                RAISE_APPLICATION_ERROR(-20003, 'Role does not exist with ID: ' || p_role_id);
+            END IF;
+        END;
+
+        -- Update role name
         UPDATE ROLE 
         SET role_name = p_new_role_name
         WHERE role_id = p_role_id;
         COMMIT; -- Save the update
     EXCEPTION
         WHEN OTHERS THEN
-            -- Rollback on error (including constraint violation)
+            -- Rollback on error and provide error message
             ROLLBACK;
-            RAISE_APPLICATION_ERROR(-20002, 'Error updating role: ' || SQLERRM);
+            RAISE_APPLICATION_ERROR(-20004, 'Error updating role: ' || SQLERRM);
     END update_role;
     
+    -- Delete Role Procedure
     PROCEDURE delete_role(p_role_id IN NUMBER) IS
         v_count NUMBER;
     BEGIN
@@ -52,31 +88,48 @@ CREATE OR REPLACE PACKAGE BODY role_procedures AS
         FROM USER_TABLE 
         WHERE role_id = p_role_id;
         
-        -- Prevent deletion if role is in use
         IF v_count > 0 THEN
-            RAISE_APPLICATION_ERROR(-20003, 'Cannot delete role - users exist with this role');
+            RAISE_APPLICATION_ERROR(-20005, 'Cannot delete role - users exist with this role');
         END IF;
-        
+
+        -- Check if the role exists
+        DECLARE
+            v_role_count NUMBER;
+        BEGIN
+            SELECT COUNT(*) INTO v_role_count
+            FROM ROLE
+            WHERE role_id = p_role_id;
+
+            IF v_role_count = 0 THEN
+                RAISE_APPLICATION_ERROR(-20006, 'Role does not exist with ID: ' || p_role_id);
+            END IF;
+        END;
+
         -- Delete the role if no dependencies found
         DELETE FROM ROLE WHERE role_id = p_role_id;
         COMMIT; -- Save the deletion
     EXCEPTION
         WHEN OTHERS THEN
             ROLLBACK;
-            RAISE_APPLICATION_ERROR(-20004, 'Error deleting role: ' || SQLERRM);
+            RAISE_APPLICATION_ERROR(-20007, 'Error deleting role: ' || SQLERRM);
     END delete_role;
+
 END role_procedures;
 /
 
 
 select * from role;
 
-
 -- Execute ROLE Table Procedures
 
 -- Add a new role
-EXEC role_procedures.add_role('Manager');
-
+DECLARE
+    v_role_id NUMBER;
+BEGIN
+    -- Adding the role 'Manager' and capturing the role_id in v_role_id
+    role_procedures.add_role('Manager', v_role_id);
+END;
+/
 
 -- Get all roles
 DECLARE
@@ -95,79 +148,165 @@ END;
 /
 
 -- Updating a role
-EXEC role_procedures.update_role(3, 'Administrator');
+EXEC role_procedures.update_role(21, 'Administrator');
 
 
 -- Delete a role (will fail due to dependency)
 EXEC role_procedures.delete_role(1);
 
 -- Delete a role (will execute successfully)
-EXEC role_procedures.delete_role(3);
+EXEC role_procedures.delete_role(21);
 
 
--- USER_TABLE Procedures Package
+--USER_TABLE Procedures Package 
 CREATE OR REPLACE PACKAGE user_procedures AS
-    PROCEDURE add_user(p_role_id IN NUMBER, p_username IN VARCHAR2, 
-                      p_email IN VARCHAR2, p_password IN VARCHAR2);
+    PROCEDURE add_user(
+        p_role_id IN NUMBER, 
+        p_username IN VARCHAR2, 
+        p_email IN VARCHAR2, 
+        p_password IN VARCHAR2, 
+        p_user_id OUT NUMBER  
+    );
+    
     PROCEDURE get_user(p_user_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
-    PROCEDURE update_user(p_user_id IN NUMBER, p_username IN VARCHAR2, p_email IN VARCHAR2);
+    
+    PROCEDURE update_user(
+        p_user_id IN NUMBER, 
+        p_username IN VARCHAR2, 
+        p_email IN VARCHAR2, 
+        p_password IN VARCHAR2, 
+        p_role_id IN NUMBER
+    );
+    
     PROCEDURE delete_user(p_user_id IN NUMBER);
 END user_procedures;
 /
 
+    
 CREATE OR REPLACE PACKAGE BODY user_procedures AS
-    PROCEDURE add_user(p_role_id IN NUMBER, p_username IN VARCHAR2, 
-                      p_email IN VARCHAR2, p_password IN VARCHAR2) IS
+
+    -- Add User Procedure
+    PROCEDURE add_user(
+        p_role_id IN NUMBER, 
+        p_username IN VARCHAR2, 
+        p_email IN VARCHAR2, 
+        p_password IN VARCHAR2, 
+        p_user_id OUT NUMBER  
+    ) IS
+        v_count NUMBER;
     BEGIN
-        -- Insert new user with sequence-generated user_id
-        -- Foreign key ensures valid role_id
+        -- Check if a user with the same username or email already exists
+        SELECT COUNT(*) INTO v_count
+        FROM USER_TABLE
+        WHERE username = p_username OR email = p_email;
+
+        IF v_count > 0 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'A user with the same username or email already exists.');
+        END IF;
+
+        -- Insert the user and return the ID using RETURNING INTO
         INSERT INTO USER_TABLE (user_id, role_id, username, Email, Password)
-        VALUES (user_seq.NEXTVAL, p_role_id, p_username, p_email, p_password);
-        COMMIT; -- Save the new user
+        VALUES (user_seq.NEXTVAL, p_role_id, p_username, p_email, p_password)
+        RETURNING user_id INTO p_user_id;  -- Capture the generated ID
+
+        COMMIT;  -- Save the changes
+
+        -- Display message
+        DBMS_OUTPUT.PUT_LINE('User added successfully with ID: ' || p_user_id);
+
     EXCEPTION
         WHEN OTHERS THEN
-            -- Rollback on error (e.g., duplicate email or invalid role_id)
             ROLLBACK;
             RAISE_APPLICATION_ERROR(-20005, 'Error adding user: ' || SQLERRM);
     END add_user;
-    
+
+    -- Get User Procedure
     PROCEDURE get_user(p_user_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR) IS
     BEGIN
-        -- Retriving all users if no ID provided, otherwise retrieves specific user 
         IF p_user_id IS NULL THEN
             OPEN p_cursor FOR
             SELECT * FROM USER_TABLE;
+
+            -- Display message
+            DBMS_OUTPUT.PUT_LINE('Fetched all users successfully.');
         ELSE
             OPEN p_cursor FOR
             SELECT * FROM USER_TABLE WHERE user_id = p_user_id;
+
+            -- Check if user exists
+            IF SQL%ROWCOUNT = 0 THEN
+                DBMS_OUTPUT.PUT_LINE('No user found with ID: ' || p_user_id);
+            ELSE
+                DBMS_OUTPUT.PUT_LINE('Fetched user with ID: ' || p_user_id);
+            END IF;
         END IF;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20008, 'Error fetching user: ' || SQLERRM);
     END get_user;
-    
-    PROCEDURE update_user(p_user_id IN NUMBER, p_username IN VARCHAR2, p_email IN VARCHAR2) IS
+
+    -- Update User Procedure
+    PROCEDURE update_user(
+        p_user_id IN NUMBER, 
+        p_username IN VARCHAR2, 
+        p_email IN VARCHAR2, 
+        p_password IN VARCHAR2, 
+        p_role_id IN NUMBER
+    ) IS
+        v_count NUMBER;
     BEGIN
-        -- Update username and email for specified user
-        -- UNIQUE constraint on Email ensures no duplicates
-        UPDATE USER_TABLE 
+        -- Check if a user with the same username or email already exists (other than the current user)
+        SELECT COUNT(*) INTO v_count
+        FROM USER_TABLE
+        WHERE (username = p_username OR email = p_email) AND user_id != p_user_id;
+
+        IF v_count > 0 THEN
+            RAISE_APPLICATION_ERROR(-20002, 'A user with the same username or email already exists.');
+        END IF;
+
+        -- Update the user details
+        UPDATE USER_TABLE
         SET username = p_username,
-            Email = p_email
+            email = p_email,
+            password = p_password,
+            role_id = p_role_id
         WHERE user_id = p_user_id;
-        COMMIT; -- Save the update
+
+        -- Check if any row was affected
+        IF SQL%ROWCOUNT > 0 THEN
+            COMMIT;
+            DBMS_OUTPUT.PUT_LINE('User updated successfully with ID: ' || p_user_id);
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('No user found with ID: ' || p_user_id);
+        END IF;
+
     EXCEPTION
         WHEN OTHERS THEN
             ROLLBACK;
             RAISE_APPLICATION_ERROR(-20006, 'Error updating user: ' || SQLERRM);
     END update_user;
-    
+
+    -- Delete User Procedure
     PROCEDURE delete_user(p_user_id IN NUMBER) IS
     BEGIN
-        -- Delete user by ID
+        -- Check if the user exists
         DELETE FROM USER_TABLE WHERE user_id = p_user_id;
-        COMMIT; -- Save the deletion
+
+        -- Check if any row was affected
+        IF SQL%ROWCOUNT > 0 THEN
+            COMMIT;
+            DBMS_OUTPUT.PUT_LINE('User deleted successfully with ID: ' || p_user_id);
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('No user found with ID: ' || p_user_id);
+        END IF;
+
     EXCEPTION
         WHEN OTHERS THEN
             ROLLBACK;
             RAISE_APPLICATION_ERROR(-20007, 'Error deleting user: ' || SQLERRM);
     END delete_user;
+
 END user_procedures;
 /
 
@@ -178,10 +317,22 @@ select * from user_table;
 -- Execute USER_TABLE Procedures
 
 -- Add a new user
-EXEC user_procedures.add_user(2, 'Amit', 'Amit@example.com', 'amit123');
+DECLARE
+    v_user_id NUMBER;
+BEGIN
+    user_procedures.add_user(2, 'Amit', 'Amit@example.com', 'amit123', v_user_id);
+END;
+/
+
 
 -- Add a new user ( with duplicate email)
-EXEC user_procedures.add_user(2, 'Aman', 'Amit@example.com', 'amit123');
+DECLARE
+    v_user_id NUMBER;
+BEGIN
+    user_procedures.add_user(2, 'Aman', 'Amit@example.com', 'amit123', v_user_id);
+END;
+/
+
 
 
 -- Get all users
@@ -193,16 +344,24 @@ DECLARE
     l_email VARCHAR2(100);
     l_password VARCHAR2(100);
 BEGIN
+    -- Fetch all users
     user_procedures.get_user(NULL, l_cursor);
+    
     LOOP
         FETCH l_cursor INTO l_user_id, l_role_id, l_username, l_email, l_password;
         EXIT WHEN l_cursor%NOTFOUND;
-        DBMS_OUTPUT.PUT_LINE('User ID: ' || l_user_id || ', Username: ' || l_username || 
-                            ', Email: ' || l_email || ', Role ID: ' || l_role_id);
+        
+        DBMS_OUTPUT.PUT_LINE('User ID: ' || l_user_id || 
+                             ', Username: ' || l_username || 
+                             ', Email: ' || l_email || 
+                             ', Role ID: ' || l_role_id);
     END LOOP;
+    
+    -- Close the cursor
     CLOSE l_cursor;
 END;
 /
+
 
 
 -- Get specific user
@@ -214,20 +373,35 @@ DECLARE
     l_email VARCHAR2(100);
     l_password VARCHAR2(100);
 BEGIN
+    -- Fetch a specific user
     user_procedures.get_user(1, l_cursor);
+    
     FETCH l_cursor INTO l_user_id, l_role_id, l_username, l_email, l_password;
-    DBMS_OUTPUT.PUT_LINE('User ID: ' || l_user_id || ', Username: ' || l_username || 
-                        ', Email: ' || l_email || ', Role ID: ' || l_role_id);
+    
+    DBMS_OUTPUT.PUT_LINE('User ID: ' || l_user_id || 
+                         ', Username: ' || l_username || 
+                         ', Email: ' || l_email || 
+                         ', Role ID: ' || l_role_id);
+    
+    -- Close the cursor
     CLOSE l_cursor;
 END;
 /
 
 
+
 -- Update a user
-EXEC user_procedures.update_user(7, 'SaritaUpdated', 'Sarita.updated@example.com');
+BEGIN
+    user_procedures.update_user(23, 'AmitUpdated', 'amit.updated@example.com', 'newpass123', 3);
+END;
+/
+
 
 -- Delete a user
-EXEC user_procedures.delete_user(7);
+BEGIN
+    user_procedures.delete_user(23);
+END;
+/
 
 
 -- AUDIT_LOG Procedures Package
@@ -241,10 +415,13 @@ END audit_procedures;
 /
 
 CREATE OR REPLACE PACKAGE BODY audit_procedures AS
-    PROCEDURE get_audit_logs(p_tablename IN VARCHAR2 DEFAULT NULL, 
-                           p_start_date IN TIMESTAMP DEFAULT NULL,
-                           p_end_date IN TIMESTAMP DEFAULT NULL,
-                           p_cursor OUT SYS_REFCURSOR) IS
+    PROCEDURE get_audit_logs(
+        p_tablename IN VARCHAR2 DEFAULT NULL, 
+        p_start_date IN TIMESTAMP DEFAULT NULL,
+        p_end_date IN TIMESTAMP DEFAULT NULL,
+        p_cursor OUT SYS_REFCURSOR
+    ) IS
+        v_count NUMBER;
     BEGIN
         -- Opens a cursor to fetch audit logs
         -- Filters are optional: if parameters are NULL, they are ignored
@@ -254,6 +431,21 @@ CREATE OR REPLACE PACKAGE BODY audit_procedures AS
         WHERE (p_tablename IS NULL OR tablename = p_tablename)
         AND (p_start_date IS NULL OR Updated_at >= p_start_date)
         AND (p_end_date IS NULL OR Updated_at <= p_end_date);
+        
+        -- Check if any records were found
+        SELECT COUNT(*) INTO v_count
+        FROM AUDIT_LOG
+        WHERE (p_tablename IS NULL OR tablename = p_tablename)
+        AND (p_start_date IS NULL OR Updated_at >= p_start_date)
+        AND (p_end_date IS NULL OR Updated_at <= p_end_date);
+        
+        IF v_count = 0 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'No audit logs found for the given filters.');
+        END IF;
+        
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Error fetching audit logs: ' || SQLERRM);
     END get_audit_logs;
 END audit_procedures;
 /
