@@ -514,9 +514,12 @@ BEGIN
 END;
 /
 
+
 -- CUSTOMER Procedures 
 CREATE OR REPLACE PACKAGE customer_procedures AS
-    PROCEDURE add_customer(p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2);
+    PROCEDURE add_customer(p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, 
+                         p_email IN VARCHAR2, p_address IN VARCHAR2, 
+                         p_cust_id OUT NUMBER);
     PROCEDURE get_customer(p_cust_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
     PROCEDURE update_customer(p_cust_id IN NUMBER, p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2);
     PROCEDURE delete_customer(p_cust_id IN NUMBER);
@@ -524,10 +527,13 @@ END customer_procedures;
 /
 
 CREATE OR REPLACE PACKAGE BODY customer_procedures AS
-    PROCEDURE add_customer(p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2) IS
+    PROCEDURE add_customer(p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, 
+                         p_email IN VARCHAR2, p_address IN VARCHAR2, 
+                         p_cust_id OUT NUMBER) IS
     BEGIN
+        p_cust_id := customer_seq.NEXTVAL;
         INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address)
-        VALUES (customer_seq.NEXTVAL, p_cust_name, p_phone, p_email, p_address);
+        VALUES (p_cust_id, p_cust_name, p_phone, p_email, p_address);
         COMMIT;
     EXCEPTION
         WHEN OTHERS THEN
@@ -544,7 +550,9 @@ CREATE OR REPLACE PACKAGE BODY customer_procedures AS
         END IF;
     END get_customer;
 
-    PROCEDURE update_customer(p_cust_id IN NUMBER, p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2) IS
+    PROCEDURE update_customer(p_cust_id IN NUMBER, p_cust_name IN VARCHAR2, 
+                            p_phone IN VARCHAR2, p_email IN VARCHAR2, 
+                            p_address IN VARCHAR2) IS
     BEGIN
         UPDATE CUSTOMER
         SET cust_name = p_cust_name,
@@ -577,9 +585,18 @@ CREATE OR REPLACE PACKAGE BODY customer_procedures AS
 END customer_procedures;
 /
 
+
 -- Add a new customer
 SET SERVEROUTPUT ON;
-EXEC customer_procedures.add_customer('Khush Santoki', '9865321470', 'Khush@example.com', '123 vadnagar Street');
+DECLARE
+  v_cust_id NUMBER;
+BEGIN
+  customer_procedures.add_customer('Khush Santoki', '9865321470', 
+                                 'Khush@example.com', '123 vadnagar Street', 
+                                 v_cust_id);
+  DBMS_OUTPUT.PUT_LINE('New Customer ID: ' || v_cust_id);
+END;
+/
 
 -- Get all customers
 SET SERVEROUTPUT ON;
@@ -601,6 +618,8 @@ BEGIN
 END;
 /
 
+
+
 -- Update a customer
 SET SERVEROUTPUT ON;
 EXEC customer_procedures.update_customer(2, 'Vatsal Mistry', '8765432109', 'vatsal@example.com', '456 Oak Avenue');
@@ -610,9 +629,12 @@ SET SERVEROUTPUT ON;
 EXEC customer_procedures.delete_customer(5);
 
 
+
 -- VEHICLE Procedures 
 CREATE OR REPLACE PACKAGE vehicle_procedures AS
-    PROCEDURE add_vehicle(p_cust_id IN NUMBER, p_licence_plate IN VARCHAR2, p_make IN VARCHAR2, p_model IN VARCHAR2, p_year IN NUMBER);
+    PROCEDURE add_vehicle(p_cust_id IN NUMBER, p_licence_plate IN VARCHAR2, 
+                         p_make IN VARCHAR2, p_model IN VARCHAR2, 
+                         p_year IN NUMBER, p_vehicle_id OUT NUMBER);
     PROCEDURE get_vehicle(p_vehicle_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
     PROCEDURE update_vehicle(p_vehicle_id IN NUMBER, p_licence_plate IN VARCHAR2, p_make IN VARCHAR2, p_model IN VARCHAR2, p_year IN NUMBER);
     PROCEDURE delete_vehicle(p_vehicle_id IN NUMBER);
@@ -622,10 +644,13 @@ END vehicle_procedures;
 
 
 CREATE OR REPLACE PACKAGE BODY vehicle_procedures AS
-    PROCEDURE add_vehicle(p_cust_id IN NUMBER, p_licence_plate IN VARCHAR2, p_make IN VARCHAR2, p_model IN VARCHAR2, p_year IN NUMBER) IS
+    PROCEDURE add_vehicle(p_cust_id IN NUMBER, p_licence_plate IN VARCHAR2, 
+                         p_make IN VARCHAR2, p_model IN VARCHAR2, 
+                         p_year IN NUMBER, p_vehicle_id OUT NUMBER) IS
     BEGIN
+        p_vehicle_id := vehicle_seq.NEXTVAL;
         INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year)
-        VALUES (vehicle_seq.NEXTVAL, p_cust_id, p_licence_plate, p_make, p_model, p_year);
+        VALUES (p_vehicle_id, p_cust_id, p_licence_plate, p_make, p_model, p_year);
         COMMIT;
     EXCEPTION
         WHEN OTHERS THEN
@@ -676,8 +701,16 @@ END vehicle_procedures;
 /
 
 
+SET SERVEROUTPUT ON;
+
 -- Add a new vehicle
-EXEC vehicle_procedures.add_vehicle(4, 'ABC123', 'Toyota', 'Camry', 2022);
+DECLARE
+  v_vehicle_id NUMBER;
+BEGIN
+  vehicle_procedures.add_vehicle(4, 'ABC123', 'Toyota', 'Camry', 2022, v_vehicle_id);
+  DBMS_OUTPUT.PUT_LINE('New Vehicle ID: ' || v_vehicle_id);
+END;
+/
 
 -- Get all vehicles
 SET SERVEROUTPUT ON;
@@ -709,9 +742,14 @@ EXEC vehicle_procedures.delete_vehicle(4);
 
 
 
+
+
 -- APPOINTMENT Procedures 
 CREATE OR REPLACE PACKAGE appointment_procedures AS
-    PROCEDURE schedule_appointment(p_cust_id IN NUMBER, p_vehicle_id IN NUMBER, p_app_date IN DATE, p_app_time IN TIMESTAMP, p_status IN VARCHAR2, p_service_id IN NUMBER, p_emp_id IN NUMBER);
+PROCEDURE schedule_appointment(p_cust_id IN NUMBER, p_vehicle_id IN NUMBER, 
+                                 p_app_date IN DATE, p_app_time IN TIMESTAMP, 
+                                 p_status IN VARCHAR2, p_service_id IN NUMBER, 
+                                 p_emp_id IN NUMBER, p_app_id OUT NUMBER);
     PROCEDURE get_appointment(p_app_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
     PROCEDURE update_appointment_status(p_app_id IN NUMBER, p_status IN VARCHAR2);
     PROCEDURE delete_appointment(p_app_id IN NUMBER);
@@ -719,10 +757,16 @@ END appointment_procedures;
 /
 
 CREATE OR REPLACE PACKAGE BODY appointment_procedures AS
-    PROCEDURE schedule_appointment(p_cust_id IN NUMBER, p_vehicle_id IN NUMBER, p_app_date IN DATE, p_app_time IN TIMESTAMP, p_status IN VARCHAR2, p_service_id IN NUMBER, p_emp_id IN NUMBER) IS
+    PROCEDURE schedule_appointment(p_cust_id IN NUMBER, p_vehicle_id IN NUMBER, 
+                                 p_app_date IN DATE, p_app_time IN TIMESTAMP, 
+                                 p_status IN VARCHAR2, p_service_id IN NUMBER, 
+                                 p_emp_id IN NUMBER, p_app_id OUT NUMBER) IS
     BEGIN
-        INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id)
-        VALUES (appointment_seq.NEXTVAL, p_cust_id, p_vehicle_id, p_app_date, p_app_time, p_status, p_service_id, p_emp_id);
+        p_app_id := appointment_seq.NEXTVAL;
+        INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, 
+                               status, service_id, emp_id)
+        VALUES (p_app_id, p_cust_id, p_vehicle_id, p_app_date, p_app_time, 
+                p_status, p_service_id, p_emp_id);
         COMMIT;
     EXCEPTION
         WHEN OTHERS THEN
@@ -763,8 +807,18 @@ CREATE OR REPLACE PACKAGE BODY appointment_procedures AS
 END appointment_procedures;
 /
 
+SET SERVEROUTPUT ON;
+
 -- Schedule a new appointment
-EXEC appointment_procedures.schedule_appointment(1, 1, TO_DATE('23-10-01', 'YYYY-MM-DD'), TO_TIMESTAMP('11:30:00', 'HH24:MI:SS'), 'Scheduled', 1, 1);
+DECLARE
+  v_app_id NUMBER;
+BEGIN
+  appointment_procedures.schedule_appointment(1, 1, TO_DATE('23-10-01', 'YYYY-MM-DD'), 
+                                            TO_TIMESTAMP('11:30:00', 'HH24:MI:SS'), 
+                                            'Scheduled', 1, 1, v_app_id);
+  DBMS_OUTPUT.PUT_LINE('New Appointment ID: ' || v_app_id);
+END;
+/
 
 -- Get all appointments
 SET SERVEROUTPUT ON;
@@ -797,9 +851,14 @@ EXEC appointment_procedures.delete_appointment(22);
 
 
 
--- EMPLOYEE Procedures 
+
+
+-- EMPLOYEE Procedures Package
 CREATE OR REPLACE PACKAGE employee_procedures AS
-    PROCEDURE add_employee(p_emp_name IN VARCHAR2, p_position IN VARCHAR2, p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, p_salary IN NUMBER, p_hire_date IN DATE, p_hours_worked IN NUMBER);
+    PROCEDURE add_employee(p_emp_name IN VARCHAR2, p_position IN VARCHAR2, 
+                         p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, 
+                         p_salary IN NUMBER, p_hire_date IN DATE, 
+                         p_hours_worked IN NUMBER, p_emp_id OUT NUMBER);
     PROCEDURE get_employee(p_emp_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
     PROCEDURE update_employee(p_emp_id IN NUMBER, p_emp_name IN VARCHAR2, p_position IN VARCHAR2, p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, p_salary IN NUMBER, p_hire_date IN DATE, p_hours_worked IN NUMBER);
     PROCEDURE delete_employee(p_emp_id IN NUMBER);
@@ -807,10 +866,16 @@ END employee_procedures;
 /
 
 CREATE OR REPLACE PACKAGE BODY employee_procedures AS
-    PROCEDURE add_employee(p_emp_name IN VARCHAR2, p_position IN VARCHAR2, p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, p_salary IN NUMBER, p_hire_date IN DATE, p_hours_worked IN NUMBER) IS
+    PROCEDURE add_employee(p_emp_name IN VARCHAR2, p_position IN VARCHAR2, 
+                         p_emp_phn IN VARCHAR2, p_email IN VARCHAR2, 
+                         p_salary IN NUMBER, p_hire_date IN DATE, 
+                         p_hours_worked IN NUMBER, p_emp_id OUT NUMBER) IS
     BEGIN
-        INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked)
-        VALUES (employee_seq.NEXTVAL, p_emp_name, p_position, p_emp_phn, p_email, p_salary, p_hire_date, p_hours_worked);
+        p_emp_id := employee_seq.NEXTVAL;
+        INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, 
+                            salary, hire_date, hours_worked)
+        VALUES (p_emp_id, p_emp_name, p_position, p_emp_phn, p_email, 
+                p_salary, p_hire_date, p_hours_worked);
         COMMIT;
     EXCEPTION
         WHEN OTHERS THEN
@@ -863,10 +928,21 @@ CREATE OR REPLACE PACKAGE BODY employee_procedures AS
 END employee_procedures;
 /
 
+
+
 SET SERVEROUTPUT ON;
 
 -- Add a new employee
-EXEC employee_procedures.add_employee('Alice Johnson', 'Manager', '1928374650', 'alice@example.com', 60000.00, TO_DATE('2018-03-25', 'YYYY-MM-DD'), 45.75);
+DECLARE
+  v_emp_id NUMBER;
+BEGIN
+  employee_procedures.add_employee('Alice Johnson', 'Manager', '1928374650', 
+                                 'alice@example.com', 60000.00, 
+                                 TO_DATE('2018-03-25', 'YYYY-MM-DD'), 
+                                 45.75, v_emp_id);
+  DBMS_OUTPUT.PUT_LINE('New Employee ID: ' || v_emp_id);
+END;
+/
 
 -- Get all employees
 SET SERVEROUTPUT ON;
@@ -896,6 +972,7 @@ EXEC employee_procedures.update_employee(1, 'Alice Smith', 'Senior Manager', '19
 
 -- Delete an employee (will fail if appointments exist)
 EXEC employee_procedures.delete_employee(21);
+
 
 
 
