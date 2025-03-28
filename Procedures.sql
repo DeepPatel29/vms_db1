@@ -977,39 +977,34 @@ EXEC employee_procedures.delete_employee(21);
 
 
 
---INVOICE PROCEDURES
---Package Specification
+--  Invoice Package Specification
 CREATE OR REPLACE PACKAGE invoice_pkg AS
-    -- Procedure to generate an invoice
     PROCEDURE generate_invoice (
-        p_invoice_id IN NUMBER,
         p_service_id IN NUMBER,
         p_app_id IN NUMBER,
-        p_total_amount IN NUMBER
+        p_total_amount IN NUMBER,
+        p_invoice_id OUT NUMBER
     );
 
-    -- Procedure to get invoice details by ID
     PROCEDURE get_invoice_by_id (
         p_invoice_id IN NUMBER
     );
 END invoice_pkg;
 /
 
---Package Body
+--  Invoice Package Body
 CREATE OR REPLACE PACKAGE BODY invoice_pkg AS
-
-    -- Generate an invoice for an appointment
+    -- generate_invoice procedure
     PROCEDURE generate_invoice (
-        p_invoice_id IN NUMBER,
         p_service_id IN NUMBER,
         p_app_id IN NUMBER,
-        p_total_amount IN NUMBER
+        p_total_amount IN NUMBER,
+        p_invoice_id OUT NUMBER
     ) AS
     BEGIN
-        -- Insert a new invoice into the INVOICE table
+        p_invoice_id := invoice_seq.NEXTVAL;
         INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount, created_at)
         VALUES (p_invoice_id, p_service_id, p_app_id, SYSDATE, p_total_amount, SYSTIMESTAMP);
-
         COMMIT;
         DBMS_OUTPUT.PUT_LINE('Invoice generated successfully. Invoice ID: ' || p_invoice_id);
     EXCEPTION
@@ -1017,7 +1012,7 @@ CREATE OR REPLACE PACKAGE BODY invoice_pkg AS
             DBMS_OUTPUT.PUT_LINE('Error while generating invoice: ' || SQLERRM);
     END generate_invoice;
 
-    -- Retrieve invoice details by invoice ID
+    -- get_invoice_by_id procedure
     PROCEDURE get_invoice_by_id (
         p_invoice_id IN NUMBER
     ) AS
@@ -1027,13 +1022,11 @@ CREATE OR REPLACE PACKAGE BODY invoice_pkg AS
         v_total_amount NUMBER;
         v_created_at TIMESTAMP;
     BEGIN
-        -- Retrieve invoice details
         SELECT service_id, app_id, invoice_date, total_amount, created_at
         INTO v_service_id, v_app_id, v_invoice_date, v_total_amount, v_created_at
         FROM INVOICE
         WHERE invoice_id = p_invoice_id;
 
-        -- Output the invoice details
         DBMS_OUTPUT.PUT_LINE('Invoice ID: ' || p_invoice_id);
         DBMS_OUTPUT.PUT_LINE('Service ID: ' || v_service_id);
         DBMS_OUTPUT.PUT_LINE('Appointment ID: ' || v_app_id);
@@ -1050,28 +1043,30 @@ CREATE OR REPLACE PACKAGE BODY invoice_pkg AS
 END invoice_pkg;
 /
 
---Calling the generate_invoice procedure
+--Execution of generate_invoice
+DECLARE
+    v_invoice_id NUMBER;  -- Declare a variable to store the returned invoice_id
 BEGIN
-    invoice_pkg.generate_invoice(5, 5, 5, 250.00);
+    invoice_pkg.generate_invoice(6, 6, 250.00, v_invoice_id);  -- Pass the OUT parameter to get the ID
+    DBMS_OUTPUT.PUT_LINE('Generated Invoice ID: ' || v_invoice_id);  -- Output the returned ID
 END;
 /
-
---Calling the get_invoice_by_id procedure
+--execution of get_invoice_by_id
 BEGIN
     invoice_pkg.get_invoice_by_id(1);
 END;
 /
 
 
---PAYMENT PROCEDURES
---PACKAGE SPECIFICATION
+
+--PAYMENT PACKAGEB SPECIFICATION
 CREATE OR REPLACE PACKAGE payment_pkg AS
     PROCEDURE record_payment (
-        p_payment_id IN NUMBER,
         p_invoice_id IN NUMBER,
         p_amount_paid IN NUMBER,
         p_payment_method IN VARCHAR2,
-        p_status IN VARCHAR2
+        p_status IN VARCHAR2,
+        p_payment_id OUT NUMBER
     );
 
     PROCEDURE get_payment_by_id (
@@ -1084,33 +1079,30 @@ CREATE OR REPLACE PACKAGE payment_pkg AS
     );
 END payment_pkg;
 /
---PACKAGE BODY
+
+ Payment Package Body
 CREATE OR REPLACE PACKAGE BODY payment_pkg AS
 
-    -- Record Payment Procedure
+     -- record_payment procedure
     PROCEDURE record_payment (
-        p_payment_id IN NUMBER,
         p_invoice_id IN NUMBER,
         p_amount_paid IN NUMBER,
         p_payment_method IN VARCHAR2,
-        p_status IN VARCHAR2
+        p_status IN VARCHAR2,
+        p_payment_id OUT NUMBER
     ) AS
     BEGIN
-        -- Insert payment into PAYMENT table
+        p_payment_id := payment_seq.NEXTVAL;
         INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status)
         VALUES (p_payment_id, p_invoice_id, SYSDATE, p_amount_paid, p_payment_method, p_status);
-
         COMMIT;
         DBMS_OUTPUT.PUT_LINE('Payment recorded successfully. Payment ID: ' || p_payment_id);
     EXCEPTION
-        WHEN NO_DATA_FOUND THEN
-            DBMS_OUTPUT.PUT_LINE('Error: Invoice not found.');
         WHEN OTHERS THEN
             DBMS_OUTPUT.PUT_LINE('Error while recording payment: ' || SQLERRM);
     END record_payment;
 
-
-    -- Get Payment Details Procedure
+    --get_payment_by_id procedure
     PROCEDURE get_payment_by_id (
         p_payment_id IN NUMBER
     ) AS
@@ -1120,43 +1112,37 @@ CREATE OR REPLACE PACKAGE BODY payment_pkg AS
         v_payment_method VARCHAR2(50);
         v_status VARCHAR2(20);
     BEGIN
-        -- Retrieve payment details
         SELECT invoice_id, payment_date, amount_paid, payment_method, status
         INTO v_invoice_id, v_payment_date, v_amount_paid, v_payment_method, v_status
         FROM PAYMENT
         WHERE payment_id = p_payment_id;
 
-        -- Display payment details
         DBMS_OUTPUT.PUT_LINE('Payment ID: ' || p_payment_id);
         DBMS_OUTPUT.PUT_LINE('Invoice ID: ' || v_invoice_id);
         DBMS_OUTPUT.PUT_LINE('Payment Date: ' || v_payment_date);
         DBMS_OUTPUT.PUT_LINE('Amount Paid: ' || v_amount_paid);
         DBMS_OUTPUT.PUT_LINE('Payment Method: ' || v_payment_method);
         DBMS_OUTPUT.PUT_LINE('Status: ' || v_status);
-
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
             DBMS_OUTPUT.PUT_LINE('Error: Payment not found.');
         WHEN OTHERS THEN
             DBMS_OUTPUT.PUT_LINE('Error while retrieving payment: ' || SQLERRM);
-    END get_payment_by_id;
-
-
-    -- Update Payment Status Procedure
+    END get_payment_by_id; 
+ 
+     -- update_payment_status procedure
     PROCEDURE update_payment_status (
         p_payment_id IN NUMBER,
         p_new_status IN VARCHAR2
     ) AS
         v_count NUMBER;
     BEGIN
-        -- Check if payment exists
         SELECT COUNT(*) INTO v_count FROM PAYMENT WHERE payment_id = p_payment_id;
 
         IF v_count = 0 THEN
             RAISE_APPLICATION_ERROR(-20002, 'Error: Payment ID does not exist.');
         END IF;
 
-        -- Update status
         UPDATE PAYMENT
         SET status = p_new_status
         WHERE payment_id = p_payment_id;
@@ -1170,22 +1156,36 @@ CREATE OR REPLACE PACKAGE BODY payment_pkg AS
 
 END payment_pkg;
 /
---Record a Payment (EXECUTION)
+
+select * from payment
+select * from invoice 
+
+SET SERVEROUTPUT ON;
+
+-- 1. Executing the 'record_payment' procedure
+DECLARE
+    v_payment_id NUMBER; 
 BEGIN
-    payment_pkg.record_payment(3, 2, 500, 'Credit Card', 'Pending');
+    payment_pkg.record_payment(4, 100, 'Credit Card', 'successful', v_payment_id);
+    DBMS_OUTPUT.PUT_LINE('Generated Payment ID: ' || v_payment_id);
 END;
 /
 
--- Get Payment by ID(EXECUTION)
+
+-- 2. Executing the 'get_payment_by_id' procedure
 BEGIN
     payment_pkg.get_payment_by_id(2);
 END;
 /
---Update Payment Status(EXEXCUTION)
+
+-- 3. Executing the 'update_payment_status' procedure
 BEGIN
     payment_pkg.update_payment_status(1, 'Successful');
 END;
 /
+
+
+
 
 ---
 
