@@ -492,3 +492,101 @@ BEGIN
 END;
 /
 
+--INVOICE FUNCTIONS
+--1 a.package specification
+CREATE OR REPLACE PACKAGE invoice_functions_pkg AS
+    -- Function to get the total amount of an invoice
+    FUNCTION get_invoice_total(p_invoice_id IN NUMBER) RETURN NUMBER;
+    
+END invoice_functions_pkg;
+/
+--b.pavkage body
+CREATE OR REPLACE PACKAGE BODY invoice_functions_pkg AS
+
+    -- Function to get the total amount of an invoice
+    FUNCTION get_invoice_total(p_invoice_id IN NUMBER) RETURN NUMBER 
+    IS
+        v_total_amount NUMBER;
+    BEGIN
+        SELECT total_amount 
+        INTO v_total_amount 
+        FROM INVOICE 
+        WHERE invoice_id = p_invoice_id;
+
+        RETURN v_total_amount;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN NULL; -- If the invoice ID is not found
+        WHEN OTHERS THEN
+            RETURN NULL; -- Handles unexpected errors
+    END get_invoice_total;
+
+   
+END invoice_functions_pkg;
+/
+
+set serveroutput on;
+--execution
+DECLARE
+    v_total NUMBER;
+BEGIN
+    v_total := invoice_functions_pkg.get_invoice_total(1);
+    DBMS_OUTPUT.PUT_LINE('Total Invoice Amount: ' || v_total);
+END;
+/
+
+
+select * from payment
+
+--2  PAYMENT FUNCTIONS
+--a. package specification
+CREATE OR REPLACE PACKAGE payment_functions_pkg AS
+    -- Function to calculate remaining balance for an invoice
+    FUNCTION get_payment_balance(p_invoice_id IN NUMBER) RETURN NUMBER;
+END payment_functions_pkg;
+/
+--b package body
+CREATE OR REPLACE PACKAGE BODY payment_functions_pkg AS
+
+    FUNCTION get_payment_balance(p_invoice_id IN NUMBER) RETURN NUMBER 
+    IS
+        v_total_amount NUMBER := 0;
+        v_total_paid NUMBER := 0;
+        v_balance NUMBER;
+    BEGIN
+        -- Get total amount from INVOICE table
+        SELECT total_amount 
+        INTO v_total_amount 
+        FROM INVOICE 
+        WHERE invoice_id = p_invoice_id;
+        
+        -- Get total amount paid from PAYMENT table (if no payments, return 0)
+        SELECT NVL(SUM(amount_paid), 0) 
+        INTO v_total_paid 
+        FROM PAYMENT 
+        WHERE invoice_id = p_invoice_id;
+
+        -- Calculate remaining balance
+        v_balance := v_total_amount - v_total_paid;
+        
+        RETURN v_balance;
+        
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN NULL; -- If invoice ID is not found
+        WHEN OTHERS THEN
+            RETURN NULL; -- Handles unexpected errors
+    END get_payment_balance;
+
+END payment_functions_pkg;
+/
+--execution of get_payment_balance function
+SET SERVEROUTPUT ON;
+DECLARE
+    v_balance NUMBER;
+BEGIN
+    v_balance := payment_functions_pkg.get_payment_balance(1);
+    DBMS_OUTPUT.PUT_LINE('Remaining Balance: ' || v_balance);
+END;
+/
+
