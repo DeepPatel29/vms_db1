@@ -359,6 +359,8 @@ END;
 
 ---
 -------
+--FUNCTIONS :
+---------------
 -- SERVICE Table Function for get service cost by service_id
 SET SERVEROUTPUT ON;
 CREATE OR REPLACE FUNCTION get_service_cost(p_service_id IN NUMBER)
@@ -380,11 +382,11 @@ END get_service_cost;
 
 -- Execution for get_service_cost
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Service Cost (service_id 1): ' || 
-        NVL(TO_CHAR(get_service_cost(1), '999.99'), 'Not Found'));
+    DBMS_OUTPUT.PUT_LINE('Service Cost (service_id ): ' || 
+        NVL(TO_CHAR(get_service_cost(21), '999.99'), 'Not Found'));
 END;
 /
-
+select * from service 
 -- Function to check if service is completed or not
 CREATE OR REPLACE FUNCTION is_service_completed(p_service_id IN NUMBER)
 RETURN BOOLEAN IS
@@ -405,9 +407,9 @@ END is_service_completed;
 
 -- Execution for is_service_completed
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Is Service Completed (service_id 1): ' || 
-        CASE WHEN is_service_completed(1) THEN 'TRUE' ELSE 'FALSE' END);
-    DBMS_OUTPUT.PUT_LINE('Is Service Completed (service_id 2): ' || 
+    DBMS_OUTPUT.PUT_LINE('Is Service Completed (service_id ): ' || 
+        CASE WHEN is_service_completed(21) THEN 'TRUE' ELSE 'FALSE' END);
+    DBMS_OUTPUT.PUT_LINE('Is Service Completed (service_id ): ' || 
         CASE WHEN is_service_completed(2) THEN 'TRUE' ELSE 'FALSE' END);
 END;
 /
@@ -433,8 +435,8 @@ END check_low_stock;
 
 -- Execution for check_low_stock
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Is Low Stock (item_id 1): ' || 
-        CASE WHEN check_low_stock(1) THEN 'TRUE' ELSE 'FALSE' END);
+    DBMS_OUTPUT.PUT_LINE('Is Low Stock (item_id ): ' || 
+        CASE WHEN check_low_stock(21) THEN 'TRUE' ELSE 'FALSE' END);
 END;
 /
 
@@ -458,9 +460,9 @@ END get_inventory_value;
 
 -- Execution for get_inventory_value
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Inventory Value (item_id 1): ' || 
+    DBMS_OUTPUT.PUT_LINE('Inventory Value (item_id ): ' || 
         NVL(TO_CHAR(get_inventory_value(1), '9999.99'), 'Not Found'));
-    DBMS_OUTPUT.PUT_LINE('Inventory Value (item_id 2): ' || 
+    DBMS_OUTPUT.PUT_LINE('Inventory Value (item_id ): ' || 
         NVL(TO_CHAR(get_inventory_value(2), '9999.99'), 'Not Found'));
 END;
 /
@@ -485,12 +487,13 @@ END get_usage_cost;
 
 -- Execution for get_usage_cost
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('Usage Cost (service_id 1): ' || 
-        NVL(TO_CHAR(get_usage_cost(1), '999.99'), 'Not Found'));
-    DBMS_OUTPUT.PUT_LINE('Usage Cost (service_id 2): ' || 
-        NVL(TO_CHAR(get_usage_cost(2), '999.99'), 'Not Found'));
+    DBMS_OUTPUT.PUT_LINE('Usage Cost (service_id ): ' || 
+        NVL(TO_CHAR(get_usage_cost(27), '999.99'), 'Not Found'));
+    DBMS_OUTPUT.PUT_LINE('Usage Cost (service_id ): ' || 
+        NVL(TO_CHAR(get_usage_cost(30), '999.99'), 'Not Found'));
 END;
 /
+
 
 --INVOICE FUNCTIONS
 --1 a.package specification
