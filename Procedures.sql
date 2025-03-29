@@ -1183,46 +1183,59 @@ BEGIN
     payment_pkg.update_payment_status(1, 'Successful');
 END;
 /
-
-
-
-
 ---
-
+---
 SET SERVEROUTPUT ON;
 ---- SERVICE Table Procedures for add_service
+
 CREATE OR REPLACE PROCEDURE add_service (
     p_service_type IN VARCHAR2,
     p_service_date IN DATE,
     p_status IN VARCHAR2,
-    p_cost IN NUMBER
+    p_cost IN NUMBER,
+    p_service_id OUT NUMBER  
 ) AS
 BEGIN
     INSERT INTO Service (service_id, service_type, service_date, status, cost)
-    VALUES (service_seq.NEXTVAL, p_service_type, p_service_date, p_status, p_cost);
+    VALUES (service_seq.NEXTVAL, p_service_type, p_service_date, p_status, p_cost)
+    RETURNING service_id INTO p_service_id;  
+
     COMMIT;
 EXCEPTION
+    WHEN DUP_VAL_ON_INDEX THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20002, 'Error : Duplicate service ID error.');
+    WHEN VALUE_ERROR THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20003, 'Invalid value .');
     WHEN OTHERS THEN
         ROLLBACK;
-        RAISE_APPLICATION_ERROR(-20001, 'Error adding service: ' || SQLERRM);
+        RAISE_APPLICATION_ERROR(-20001, 'Error while adding service: ' || SQLERRM);
 END add_service;
 /
 
 ---execution for service table procedure for add_service
+DECLARE
+    v_service_id NUMBER;
 BEGIN
-    add_service('Engine Tune-Up', TO_DATE('2025-03-20', 'YYYY-MM-DD'), 'Pending', 150.00);
+    add_service('Engine Tune-Up', TO_DATE('2025-03-20', 'YYYY-MM-DD'), 'Pending', 150.00, v_service_id);
+    DBMS_OUTPUT.PUT_LINE('New Service ID: ' || v_service_id);
 END;
 /
 
-select * from service 
+select * from service
 
------- SERVICE Table Procedures for get service
+---- SERVICE Table Procedures for get service
 
 CREATE OR REPLACE PROCEDURE get_service (
     p_service_id IN NUMBER DEFAULT NULL,
-    p_cursor OUT SYS_REFCURSOR
+    p_cursor OUT SYS_REFCURSOR,
+    p_service_id_out OUT NUMBER  
 ) AS
 BEGIN
+    -- If service_id is provided, then return that service_id; otherwise, return NULL
+    p_service_id_out := p_service_id;  
+
     IF p_service_id IS NULL THEN
         OPEN p_cursor FOR
             SELECT * FROM Service;
@@ -1236,7 +1249,6 @@ EXCEPTION
 END get_service;
 /
 
-
 --execution for get all services 
 DECLARE
     l_cursor SYS_REFCURSOR;
@@ -1245,25 +1257,33 @@ DECLARE
     l_service_date DATE;
     l_status VARCHAR2(100);
     l_cost NUMBER(10,2);
+    l_service_id_out NUMBER; 
 BEGIN
-    get_service(NULL, l_cursor);
+    -- Execute the procedure to get all services (service_id is NULL, so we fetch all)
+    get_service(NULL, l_cursor, l_service_id_out);
+
+    DBMS_OUTPUT.PUT_LINE('Service ID : ' || l_service_id_out);
+
     LOOP
         FETCH l_cursor INTO l_service_id, l_service_type, l_service_date, l_status, l_cost;
         EXIT WHEN l_cursor%NOTFOUND;
         DBMS_OUTPUT.PUT_LINE('ID: ' || l_service_id || ', Type: ' || l_service_type || 
-                            ', Date: ' || TO_CHAR(l_service_date, 'YYYY-MM-DD') || 
-                            ', Status: ' || l_status || ', Cost: ' || l_cost);
+                             ', Date: ' || TO_CHAR(l_service_date, 'YYYY-MM-DD') || 
+                             ', Status: ' || l_status || ', Cost: ' || l_cost);
     END LOOP;
     CLOSE l_cursor;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
 END;
 /
 
-
------- SERVICE Table Procedures for update service 
+-- SERVICE Table Procedures for update service 
 CREATE OR REPLACE PROCEDURE update_service (
     p_service_id IN NUMBER,
     p_status IN VARCHAR2,
-    p_cost IN NUMBER
+    p_cost IN NUMBER,
+    p_service_id_out OUT NUMBER 
 ) AS
 BEGIN
     UPDATE Service
@@ -1274,61 +1294,70 @@ BEGIN
     IF SQL%ROWCOUNT = 0 THEN
         RAISE_APPLICATION_ERROR(-20003, 'Service ID not found');
     END IF;
+
+    p_service_id_out := p_service_id;
     COMMIT;
 EXCEPTION
     WHEN OTHERS THEN
         ROLLBACK;
-        RAISE_APPLICATION_ERROR(-20004, 'Error updating service: ' || SQLERRM);
+        RAISE_APPLICATION_ERROR(-20004, 'Error while updating service: ' || SQLERRM);
 END update_service;
 /
 
 ---execution for update service 
+DECLARE
+    l_service_id_out NUMBER; 
 BEGIN
-    update_service(1, 'Completed', 55.00); 
+    update_service(1, 'Completed', 60.00, l_service_id_out);
+
+    DBMS_OUTPUT.PUT_LINE('Service ID OUT: ' || l_service_id_out);
+END;
+/
+
+------ SERVICE Table Procedures for delete service 
+CREATE OR REPLACE PROCEDURE delete_service (
+    p_service_id IN NUMBER,
+    p_service_id_out OUT NUMBER 
+) AS
+BEGIN
+    DELETE FROM service_inventory WHERE service_id = p_service_id;
+        DELETE FROM Service WHERE service_id = p_service_id;
+        IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Service ID not found');
+    END IF;
+    p_service_id_out := p_service_id;
+    COMMIT;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20006, 'Error while deleting service: ' || SQLERRM);
+END delete_service;
+/
+
+--execution for delete service 
+DECLARE
+    l_service_id_out NUMBER; 
+BEGIN
+    delete_service(1, l_service_id_out);
+    DBMS_OUTPUT.PUT_LINE('Service ID Deleted: ' || l_service_id_out);
 END;
 /
 
 select * from service 
 
-
------- SERVICE Table Procedures for delete service 
-CREATE OR REPLACE PROCEDURE delete_service (
-    p_service_id IN NUMBER
-) AS
-BEGIN
-    DELETE FROM service_inventory WHERE service_id = p_service_id;
-    DELETE FROM Service WHERE service_id = p_service_id;
-    IF SQL%ROWCOUNT = 0 THEN
-        RAISE_APPLICATION_ERROR(-20005, 'Service ID not found');
-    END IF;
-    COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        ROLLBACK;
-        RAISE_APPLICATION_ERROR(-20006, 'Error deleting service: ' || SQLERRM);
-END delete_service;
-/
-
-
---execution for delete service 
-BEGIN
-    delete_service(1); 
-END;
-/
-
-SELECT * FROM Service WHERE service_id = 1;
-SELECT * FROM service_inventory WHERE service_id = 1; 
-
-
 ---- INVENTORY Table Procedures for add_inventory_item 
 CREATE OR REPLACE PROCEDURE add_inventory_item (
     p_item_name IN VARCHAR2,
     p_quantity IN NUMBER,
-    p_price_per_unit IN NUMBER
+    p_price_per_unit IN NUMBER,
+    p_item_id_out OUT NUMBER  
 ) AS
 BEGIN
+    -- Insert the new item into the inventory table
     INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
-    VALUES (inventory_seq.NEXTVAL, p_item_name, p_quantity, p_price_per_unit);
+    VALUES (inventory_seq.NEXTVAL, p_item_name, p_quantity, p_price_per_unit)
+    RETURNING item_id INTO p_item_id_out; 
     COMMIT;
 EXCEPTION
     WHEN OTHERS THEN
@@ -1337,16 +1366,18 @@ EXCEPTION
 END add_inventory_item;
 /
 
-
 ----Executions add_inventory_item
+DECLARE
+    l_item_id_out NUMBER; 
 BEGIN
-    add_inventory_item('Air Filter', 20, 25.00);
+    add_inventory_item('Air Filter', 20, 25.00, l_item_id_out);
+
+    DBMS_OUTPUT.PUT_LINE('Generated Item ID: ' || l_item_id_out);
 END;
 /
 
-select * from Inventory
-
 --- INVENTORY Table Procedures for get_inventory 
+
 CREATE OR REPLACE PROCEDURE get_inventory (
     p_item_id IN NUMBER DEFAULT NULL,
     p_cursor OUT SYS_REFCURSOR
@@ -1361,10 +1392,9 @@ BEGIN
     END IF;
 EXCEPTION
     WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20008, 'Error retrieving inventory: ' || SQLERRM);
+        RAISE_APPLICATION_ERROR(-20008, 'Error while retrieving inventory: ' || SQLERRM);
 END get_inventory;
 /
-
 
 --execution get_inventory 
 DECLARE
@@ -1375,15 +1405,21 @@ DECLARE
     l_price_per_unit NUMBER(10,2);
 BEGIN
     get_inventory(NULL, l_cursor);
-    LOOP
+        LOOP
         FETCH l_cursor INTO l_item_id, l_item_name, l_quantity, l_price_per_unit;
         EXIT WHEN l_cursor%NOTFOUND;
         DBMS_OUTPUT.PUT_LINE('ID: ' || l_item_id || ', Name: ' || l_item_name || 
                             ', Quantity: ' || l_quantity || ', Price: ' || l_price_per_unit);
     END LOOP;
+
     CLOSE l_cursor;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred while fetching the inventory: ' || SQLERRM);
 END;
 /
+
 
 
 --- INVENTORY Table Procedures for update_inventory 
@@ -1405,45 +1441,77 @@ BEGIN
 EXCEPTION
     WHEN OTHERS THEN
         ROLLBACK;
-        RAISE_APPLICATION_ERROR(-20010, 'Error updating inventory: ' || SQLERRM);
+        RAISE_APPLICATION_ERROR(-20010, 'Error while updating inventory: ' || SQLERRM);
 END update_inventory;
 /
 
 --execution update_inventory
 BEGIN
-    update_inventory(1, 90, 16.00); 
+    -- Test the update_inventory procedure
+    update_inventory(21, 90, 16.00); 
+END;
+/
+
+select * from inventory
+
+--Inventory table procedure for delete_inventory 
+CREATE OR REPLACE PROCEDURE delete_inventory (
+    p_item_id IN NUMBER,               
+    p_deleted_item_id OUT NUMBER       
+) AS
+BEGIN
+    DELETE FROM inventory
+    WHERE item_id = p_item_id;
+
+    IF SQL%ROWCOUNT = 0 THEN
+        RAISE_APPLICATION_ERROR(-20011, 'Inventory item ID not found');
+    ELSE
+        p_deleted_item_id := p_item_id;
+    END IF;
+    COMMIT;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Handle foreign key constraint violation (if child records exist)
+        IF SQLCODE = -2292 THEN
+            RAISE_APPLICATION_ERROR(-20013, 'Cannot delete inventory item. Foreign key .');
+        ELSE
+            ROLLBACK;
+            RAISE_APPLICATION_ERROR(-20012, 'Error deleting inventory: ' || SQLERRM);
+        END IF;
+END delete_inventory;
+/
+
+--execution for delete_inventory
+DECLARE
+    l_deleted_item_id NUMBER;  
+BEGIN
+    -- Call the delete_inventory procedure, passing the item_id and receiving the deleted item_id
+    delete_inventory(2, l_deleted_item_id);
+
+    DBMS_OUTPUT.PUT_LINE('Deleted item ID: ' || l_deleted_item_id);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error while deleting: ' || SQLERRM);
+END;
+/
+
+
+--execution delete record 
+DECLARE
+    l_deleted_item_id NUMBER;  
+BEGIN
+    delete_inventory(21, l_deleted_item_id);
+    DBMS_OUTPUT.PUT_LINE('Deleted item ID: ' || l_deleted_item_id);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
 END;
 /
 
 select * from inventory
 
 
---Inventory table procedure for delete_inventory 
-CREATE OR REPLACE PROCEDURE delete_inventory (
-    p_item_id IN NUMBER
-) AS
-BEGIN
-    DELETE FROM inventory
-    WHERE item_id = p_item_id;
-    
-    IF SQL%ROWCOUNT = 0 THEN
-        RAISE_APPLICATION_ERROR(-20011, 'Inventory item ID not found');
-    END IF;
-    COMMIT;
-EXCEPTION
-    WHEN OTHERS THEN
-        ROLLBACK;
-        RAISE_APPLICATION_ERROR(-20012, 'Error deleting inventory: ' || SQLERRM);
-END delete_inventory;
-/
-
---execution for delete_inventory
-BEGIN
-    delete_inventory(1);
-END;
-/
-
-----SERVICE_INVENTORY Table Procedures  use_inventory 
+--SERVICE_INVENTORY Table Procedures  use_inventory 
 CREATE OR REPLACE PROCEDURE use_inventory (
     p_service_id IN NUMBER,
     p_item_id IN NUMBER,
@@ -1477,10 +1545,18 @@ END use_inventory;
 /
 --execution for use inventory 
 
+DECLARE
+    l_service_inventory_id NUMBER;
 BEGIN
-    use_inventory(1, 2, 3); 
+    use_inventory(2, 2, 44);
+    
+    DBMS_OUTPUT.PUT_LINE('Inventory used successfully:');
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
 END;
 /
+
 
 --procedure for get service_inventory 
 CREATE OR REPLACE PROCEDURE get_service_inventory (
@@ -1540,7 +1616,6 @@ EXCEPTION
         RAISE_APPLICATION_ERROR(-20018, 'Error deleting service inventory: ' || SQLERRM);
 END delete_service_inventory;
 /
-
 --execution delete service_inventory
 BEGIN
     delete_service_inventory(1, 2); 
