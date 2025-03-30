@@ -509,6 +509,10 @@ BEGIN
 END;
 /
 
+
+--=================================================Audit triggers End=====================================================================
+
+
 --TRIGGERS :
 --Triggers for service table trg_service_complete_status
 SET SERVEROUTPUT ON;
