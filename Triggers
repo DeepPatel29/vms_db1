@@ -657,3 +657,106 @@ WHERE service_id = 2;
 
 select * from service_inventory
 select * from service
+
+
+--=========INVOICE TIGGERS===========
+-- 1..Trigger to auto generate invoices when a service is marked 'Completed'. 
+CREATE OR REPLACE TRIGGER trg_auto_generate_invoice
+AFTER UPDATE ON service
+FOR EACH ROW
+WHEN (NEW.status = 'Completed') -- Fires only when status is updated to 'Completed'
+DECLARE
+    v_invoice_count NUMBER;
+    v_app_id NUMBER;  -- Store app_id separately
+BEGIN
+    -- Fetch app_id from the related table (if not stored in the service table)
+    SELECT app_id INTO v_app_id 
+    FROM appointment  
+    WHERE service_id = :NEW.service_id; 
+
+    -- Check if an invoice already exists for this service & appointment
+    SELECT COUNT(*) INTO v_invoice_count 
+    FROM invoice 
+    WHERE service_id = :NEW.service_id AND app_id = v_app_id;
+
+    -- If no existing invoice, generate a new one
+    IF v_invoice_count = 0 THEN
+        INSERT INTO invoice (invoice_id, service_id, app_id, total_amount, invoice_date, created_at)
+        VALUES (
+            invoice_seq.NEXTVAL,  -- Auto-incremented ID
+            :NEW.service_id,
+            v_app_id,  -- Use retrieved app_id
+            (SELECT cost FROM service WHERE service_id = :NEW.service_id),  -- Fetch service cost
+            SYSDATE,  -- Invoice date is today
+            SYSTIMESTAMP  -- Record creation timestamp
+        );
+    END IF;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20003, 'No appointment found for this service ID.');
+
+    WHEN DUP_VAL_ON_INDEX THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Duplicate Invoice Error: Invoice already exists for this service and appointment.');
+    
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20002, 'An unexpected error occurred while generating the invoice.');
+END;
+/
+
+--Test the trigger (trg_auto_generate_invoice)
+UPDATE service 
+SET status = 'completed' 
+WHERE service_id = 4;
+
+SELECT * FROM invoice WHERE service_id = 4;
+
+
+-- 2. Trigger to Prevent Duplicate Invoices for the Same Service and Appointment
+CREATE OR REPLACE TRIGGER trg_prevent_duplicate_invoices
+BEFORE INSERT ON invoice
+FOR EACH ROW
+DECLARE
+    v_count NUMBER;
+BEGIN
+    -- Check if an invoice already exists for this service and appointment
+    SELECT COUNT(*) INTO v_count 
+    FROM invoice 
+    WHERE service_id = :NEW.service_id AND app_id = :NEW.app_id;
+
+    -- If an invoice already exists, prevent insertion
+    IF v_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Duplicate invoice detected! An invoice already exists for this service and appointment.');
+    END IF;
+END;
+/
+--inserted a duplicate invoice to test the trigger (trg_prevent_duplicate_invoices)
+INSERT INTO invoice (invoice_id, service_id, app_id, total_amount, invoice_date, created_at)
+VALUES (3, 3, 3, 50, SYSDATE, SYSTIMESTAMP);
+
+
+--=======TRIGGER FOR PAYMENT TABLE========
+
+-- 1..Trigger to Prevent Duplicate Payments for the Same Invoice:
+CREATE OR REPLACE TRIGGER trg_prevent_duplicate_payments
+BEFORE INSERT ON payment
+FOR EACH ROW
+DECLARE
+    v_count NUMBER;
+BEGIN
+    -- Check if a payment already exists for this invoice
+    SELECT COUNT(*) INTO v_count 
+    FROM payment 
+    WHERE invoice_id = :NEW.invoice_id;
+
+    -- If a payment already exists, prevent insertion
+    IF v_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Duplicate payment detected! A payment has already been made for this invoice.');
+    END IF;
+END;
+/
+
+-- Inserted  a duplicate payment for the same invoice to test the trigger
+INSERT INTO payment (payment_id, invoice_id, payment_date, amount_paid , payment_method, status)
+VALUES (1, 1, SYSDATE,  50, 'credit-card', 'successful');
+
