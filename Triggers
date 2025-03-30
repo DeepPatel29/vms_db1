@@ -1,5 +1,51 @@
 SET SERVEROUTPUT ON;
 
+-- Prevent deletion if role is in use (Role table trigger)
+CREATE OR REPLACE TRIGGER trg_role_before_delete
+BEFORE DELETE ON ROLE
+FOR EACH ROW
+DECLARE
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_count
+    FROM USER_TABLE
+    WHERE role_id = :OLD.role_id;
+    
+    IF v_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Cannot delete role; it is assigned to users.');
+    END IF;
+END;
+/
+
+-- Testing Trigger
+DELETE FROM ROLE WHERE ROLE_ID = 2;
+
+--Prevent changing role_id to non-existent rolePrevent changing role_id to non-existent role(USER_TABLE)
+CREATE OR REPLACE TRIGGER trg_user_before_update
+BEFORE UPDATE OF role_id ON USER_TABLE
+FOR EACH ROW
+DECLARE
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_count
+    FROM ROLE
+    WHERE role_id = :NEW.role_id;
+    
+    IF v_count = 0 THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Invalid role_id; role does not exist.');
+    END IF;
+END;
+/
+
+--Testing Trigger
+UPDATE USER_TABLE
+SET role_id = 100  -- Non-existent role_id
+WHERE user_id = 1;
+
+
+--Audit triggers
 -- Trigger for USER_TABLE
 CREATE OR REPLACE TRIGGER trg_user_audit
 FOR INSERT OR UPDATE OR DELETE ON USER_TABLE
