@@ -508,3 +508,148 @@ BEGIN
     COMMIT;
 END;
 /
+
+--TRIGGERS :
+--Triggers for service table trg_service_complete_status
+SET SERVEROUTPUT ON;
+
+CREATE OR REPLACE TRIGGER trg_service_complete_status
+AFTER INSERT OR UPDATE ON service_inventory
+FOR EACH ROW
+DECLARE
+    v_required_quantity NUMBER;
+    v_available_quantity NUMBER;
+    v_service_status VARCHAR2(100);
+BEGIN
+    -- Check if the service is complete
+    SELECT status INTO v_service_status
+    FROM Service
+    WHERE service_id = :NEW.service_id;
+
+    -- it will proceed if service is not already completed
+    IF v_service_status != 'Completed' THEN
+        -- Check if all items used in service are available in inventory
+        SELECT quantity INTO v_required_quantity
+        FROM inventory
+        WHERE item_id = :NEW.item_id;
+
+        SELECT quantity_used INTO v_available_quantity
+        FROM service_inventory
+        WHERE service_id = :NEW.service_id AND item_id = :NEW.item_id;
+
+        -- If the required quantity is available then update the service status
+        IF v_required_quantity >= v_available_quantity THEN
+            UPDATE Service
+            SET status = 'Completed'
+            WHERE service_id = :NEW.service_id;
+        END IF;
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        -- Handle case where no service record is found
+        DBMS_OUTPUT.PUT_LINE('Service not found for the given service_id');
+    WHEN OTHERS THEN
+        -- Log other exceptions
+        DBMS_OUTPUT.PUT_LINE('Error occurred in trg_service_complete_status: ' || SQLERRM);
+END trg_service_complete_status;
+/
+
+SELECT service_id FROM SERVICE WHERE service_id = 21;
+
+
+--Testing trg_service_complete_status
+
+-- Insert a service record first
+INSERT INTO Service (service_id, service_type, service_date, status, cost)
+VALUES (service_seq.NEXTVAL, 'Oil Change', SYSDATE, 'Pending', 0);
+
+-- Insert inventory items
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
+VALUES (inventory_seq.NEXTVAL, 'Oil Filter', 10, 20);
+
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
+VALUES (inventory_seq.NEXTVAL, 'Engine Oil', 10, 30);
+
+INSERT INTO service_inventory (service_id, item_id, quantity_used)
+VALUES (22, 2, 1); 
+
+-- Now check the Service table to see if the status gets updated
+SELECT * FROM Service WHERE service_id = 22;
+
+
+-------
+--triggers for trg_service_auto_cost_update
+
+CREATE OR REPLACE TRIGGER trg_service_auto_cost_update
+AFTER INSERT OR UPDATE ON service_inventory
+FOR EACH ROW
+DECLARE
+    v_item_price NUMBER(10, 2);
+    v_total_cost NUMBER(10, 2) := 0;
+BEGIN
+    -- Calculate the total cost based on items used in the service
+    SELECT price_per_unit INTO v_item_price
+    FROM inventory
+    WHERE item_id = :NEW.item_id;
+
+    v_total_cost := v_item_price * :NEW.quantity_used;
+
+    -- Update the service cost
+    UPDATE Service
+    SET cost = cost + v_total_cost
+    WHERE service_id = :NEW.service_id;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Item not found for the given item_id');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error occurred in trg_service_auto_cost_update: ' || SQLERRM);
+END trg_service_auto_cost_update;
+/
+
+--testing Auto cost update 
+-- Insert service_inventory 
+INSERT INTO service_inventory (service_id, item_id, quantity_used)
+VALUES (23, 2, 1);  -- Used 1 Engine Oil
+
+-- Now check the Service table to see if the cost gets updated
+SELECT * FROM Service WHERE service_id = 23;
+
+
+----------	
+--trg_service_status_prevent_change
+
+CREATE OR REPLACE TRIGGER trg_service_status_prevent_change
+BEFORE UPDATE OF status ON Service
+FOR EACH ROW
+DECLARE
+    v_pending_inventory_count NUMBER;
+BEGIN
+    -- Check for pending inventory items (where quantity_used < quantity in inventory)
+    SELECT COUNT(*) INTO v_pending_inventory_count
+    FROM service_inventory si
+    JOIN inventory i ON si.item_id = i.item_id
+    WHERE si.service_id = :OLD.service_id
+      AND si.quantity_used < i.quantity;
+
+    -- If there are any pending items, prevent status change to 'Completed'
+    IF v_pending_inventory_count > 0 AND :NEW.status = 'Completed' THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Cannot change status to Completed due to pending inventory items');
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error occurred in while change: ' || SQLERRM);
+END trg_service_status_prevent_change;
+/
+
+--Testing trg_service_status_prevent_change
+
+-- Try to change the status to Completed it should fail if inventory is pending
+UPDATE Service
+SET status = 'Completed'
+WHERE service_id = 2;
+
+
+select * from service_inventory
+select * from service
