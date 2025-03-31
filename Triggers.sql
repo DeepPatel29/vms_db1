@@ -512,6 +512,86 @@ END;
 
 --=================================================Audit triggers End=====================================================================
 
+--=================================================Vehicle and Appointment triggers start=====================================================================
+
+
+--Triggers for VEHICLE
+CREATE OR REPLACE TRIGGER trg_vehicle_year_check
+BEFORE INSERT OR UPDATE OF Year ON VEHICLE
+FOR EACH ROW
+BEGIN
+    IF :NEW.Year > EXTRACT(YEAR FROM SYSDATE) THEN
+        RAISE_APPLICATION_ERROR(-20032, 'Vehicle year cannot be in the future.');
+    ELSIF :NEW.Year < 1900 THEN
+        RAISE_APPLICATION_ERROR(-20033, 'Vehicle year cannot be before 1900.');
+    END IF;
+END;
+/
+
+-- Valid year
+INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year)
+VALUES (vehicle_seq.NEXTVAL, 5001, 'ABC123', 'Toyota', 'Camry', 2020);  -- Succeeds
+
+-- Future year (fails)
+INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year)
+VALUES (vehicle_seq.NEXTVAL, 5001, 'XYZ789', 'Honda', 'Civic', 2026);  -- Fails
+
+
+--Triggers for APPOINTMENT
+CREATE OR REPLACE TRIGGER trg_appointment_overlap
+BEFORE INSERT OR UPDATE ON APPOINTMENT
+FOR EACH ROW
+DECLARE
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_count
+    FROM APPOINTMENT
+    WHERE emp_id = :NEW.emp_id
+    AND app_date = :NEW.app_date
+    AND app_time = :NEW.app_time
+    AND app_id != NVL(:NEW.app_id, -1);  -- Exclude the current row during update
+
+    IF v_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Employee already has an appointment at this date and time.');
+    END IF;
+END;
+/
+
+
+-- First appointment
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id)
+VALUES (appointment_seq.NEXTVAL, 5001, 7002, TO_DATE('2025-11-01', 'YYYY-MM-DD'), 
+        TO_TIMESTAMP('14:00:00', 'HH24:MI:SS'), 'Scheduled', 1001, 1);  -- Succeeds
+
+-- Overlapping appointment (fails)
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id)
+VALUES (appointment_seq.NEXTVAL, 5002, 7002, TO_DATE('2025-11-01', 'YYYY-MM-DD'), 
+        TO_TIMESTAMP('14:00:00', 'HH24:MI:SS'), 'Scheduled', 1001, 1);  -- Fails
+
+
+
+
+CREATE OR REPLACE TRIGGER trg_appointment_date_check
+BEFORE INSERT ON APPOINTMENT
+FOR EACH ROW
+BEGIN
+    IF :NEW.app_date < TRUNC(SYSDATE) THEN
+        RAISE_APPLICATION_ERROR(-20036, 'Appointment date cannot be in the past.');
+    END IF;
+END;
+/
+
+-- Future date (succeeds)
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id)
+VALUES (appointment_seq.NEXTVAL, 5001, 7002, SYSDATE + 1, TO_TIMESTAMP('14:00:00', 'HH24:MI:SS'), 'Scheduled', 1001, 1);
+
+-- Past date (fails)
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id)
+VALUES (appointment_seq.NEXTVAL, 5001, 7002, SYSDATE - 1, TO_TIMESTAMP('14:00:00', 'HH24:MI:SS'), 'Scheduled', 1001, 1);
+
+
+--=================================================Vehicle and Appointment triggers End=====================================================================
 
 --TRIGGERS :
 --Triggers for service table trg_service_complete_status

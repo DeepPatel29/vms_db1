@@ -269,14 +269,31 @@ CREATE TABLE inventory (
     price_per_unit NUMBER(10, 2)
 );
 
--- Create service_inventory table with sequence
 CREATE TABLE service_inventory (
-    service_id NUMBER PRIMARY KEY,
+    service_id NUMBER,
     item_id NUMBER,
     quantity_used NUMBER,
+    
+    -- Composite Primary Key
+    CONSTRAINT pk_service_inventory PRIMARY KEY (service_id, item_id),
+    
+    -- Foreign Key Constraints
+    CONSTRAINT fk_service_id FOREIGN KEY (service_id)
+        REFERENCES service(service_id),
+        
     CONSTRAINT fk_item_id FOREIGN KEY (item_id)
-    REFERENCES inventory(item_id)
+        REFERENCES inventory(item_id)
 );
+
+
+INSERT INTO service_inventory (service_id, item_id, quantity_used)
+VALUES (2, 61, 5);
+
+INSERT INTO service_inventory (service_id, item_id, quantity_used)
+VALUES (3, 62, 4);
+
+INSERT INTO service_inventory (service_id, item_id, quantity_used)
+VALUES (4, 63, 10);
 
 -- Insert into service table using sequence
 INSERT INTO Service (service_id, service_type, service_date, status, cost)
@@ -295,11 +312,6 @@ VALUES (inventory_seq.NEXTVAL, 'Engine Oil', 100, 15.50);
 INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
 VALUES (inventory_seq.NEXTVAL, 'Brake Pads', 50, 40.00);
 
--- Insert into service_inventory table using sequence
-INSERT INTO service_inventory (service_id, item_id, quantity_used)
-VALUES (service_inventory_seq.NEXTVAL, 1, 2);
 
-INSERT INTO service_inventory (service_id, item_id, quantity_used)
-VALUES (service_inventory_seq.NEXTVAL, 2, 1);
 
 
