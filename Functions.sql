@@ -361,137 +361,117 @@ END;
 -------
 --FUNCTIONS :
 ---------------
--- SERVICE Table Function for get service cost by service_id
-SET SERVEROUTPUT ON;
-CREATE OR REPLACE FUNCTION get_service_cost(p_service_id IN NUMBER)
-RETURN NUMBER IS
-    v_cost NUMBER(10,2);
-BEGIN
-    SELECT cost INTO v_cost
-    FROM Service
-    WHERE service_id = p_service_id;
-    
-    RETURN v_cost;
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RETURN NULL;
-    WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20001, 'Error in get_service_cost: ' || SQLERRM);
-END get_service_cost;
+--package for functions of service table
+CREATE OR REPLACE PACKAGE service_function_pkg AS
+    FUNCTION get_service_cost(p_service_id IN NUMBER) RETURN NUMBER;
+    FUNCTION is_service_completed(p_service_id IN NUMBER) RETURN BOOLEAN;
+END service_function_pkg;
 /
+CREATE OR REPLACE PACKAGE BODY service_function_pkg AS
+    FUNCTION get_service_cost(p_service_id IN NUMBER)
+    RETURN NUMBER IS
+        v_cost NUMBER(10,2);
+    BEGIN
+        SELECT cost INTO v_cost
+        FROM Service
+        WHERE service_id = p_service_id;
+        
+        RETURN v_cost;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN NULL;
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Error in get_service_cost: ' || SQLERRM);
+    END get_service_cost;
 
--- Execution for get_service_cost
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('Service Cost (service_id ): ' || 
-        NVL(TO_CHAR(get_service_cost(21), '999.99'), 'Not Found'));
-END;
-/
-select * from service 
--- Function to check if service is completed or not
-CREATE OR REPLACE FUNCTION is_service_completed(p_service_id IN NUMBER)
-RETURN BOOLEAN IS
-    v_status VARCHAR2(100);
-BEGIN
-    SELECT status INTO v_status
-    FROM Service
-    WHERE service_id = p_service_id;
-    
-    RETURN UPPER(v_status) = 'COMPLETED';
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RETURN FALSE;
-    WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20002, 'Error in is_service_completed: ' || SQLERRM);
-END is_service_completed;
-/
+    FUNCTION is_service_completed(p_service_id IN NUMBER)
+    RETURN BOOLEAN IS
+        v_status VARCHAR2(100);
+    BEGIN
+        SELECT status INTO v_status
+        FROM Service
+        WHERE service_id = p_service_id;
+        
+        RETURN UPPER(v_status) = 'COMPLETED';
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN FALSE;
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Error in is_service_completed: ' || SQLERRM);
+    END is_service_completed;
 
--- Execution for is_service_completed
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('Is Service Completed (service_id ): ' || 
-        CASE WHEN is_service_completed(21) THEN 'TRUE' ELSE 'FALSE' END);
-    DBMS_OUTPUT.PUT_LINE('Is Service Completed (service_id ): ' || 
-        CASE WHEN is_service_completed(2) THEN 'TRUE' ELSE 'FALSE' END);
-END;
+END service_function_pkg;
 /
 
 
--- Function on INVENTORY table to check if item stock is low (< 10)
-CREATE OR REPLACE FUNCTION check_low_stock(p_item_id IN NUMBER)
-RETURN BOOLEAN IS
-    v_quantity NUMBER;
-BEGIN
-    SELECT quantity INTO v_quantity
-    FROM inventory
-    WHERE item_id = p_item_id;
-    
-    RETURN v_quantity < 10;
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RETURN FALSE;
-    WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20003, 'Error in check_low_stock: ' || SQLERRM);
-END check_low_stock;
+
+--2 package for functions of inventory table
+CREATE OR REPLACE PACKAGE inventory_function_pkg AS
+    FUNCTION check_low_stock(p_item_id IN NUMBER) RETURN BOOLEAN;
+    FUNCTION get_inventory_value(p_item_id IN NUMBER) RETURN NUMBER;
+END inventory_function_pkg;
 /
 
--- Execution for check_low_stock
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('Is Low Stock (item_id ): ' || 
-        CASE WHEN check_low_stock(21) THEN 'TRUE' ELSE 'FALSE' END);
-END;
+CREATE OR REPLACE PACKAGE BODY inventory_function_pkg AS
+    FUNCTION check_low_stock(p_item_id IN NUMBER)
+    RETURN BOOLEAN IS
+        v_quantity NUMBER;
+    BEGIN
+        SELECT quantity INTO v_quantity
+        FROM inventory
+        WHERE item_id = p_item_id;
+        
+        RETURN v_quantity < 10;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN FALSE;
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20003, 'Error in check_low_stock: ' || SQLERRM);
+    END check_low_stock;
+
+    FUNCTION get_inventory_value(p_item_id IN NUMBER)
+    RETURN NUMBER IS
+        v_value NUMBER(10,2);
+    BEGIN
+        SELECT quantity * price_per_unit INTO v_value
+        FROM inventory
+        WHERE item_id = p_item_id;
+        
+        RETURN v_value;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN NULL;
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20004, 'Error in get_inventory_value: ' || SQLERRM);
+    END get_inventory_value;
+
+END inventory_function_pkg;
 /
 
--- Function to get total value of an inventory item
-CREATE OR REPLACE FUNCTION get_inventory_value(p_item_id IN NUMBER)
-RETURN NUMBER IS
-    v_value NUMBER(10,2);
-BEGIN
-    SELECT quantity * price_per_unit INTO v_value
-    FROM inventory
-    WHERE item_id = p_item_id;
-    
-    RETURN v_value;
-EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-        RETURN NULL;
-    WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20004, 'Error in get_inventory_value: ' || SQLERRM);
-END get_inventory_value;
+--3 package for functions of servive_inventory table
+CREATE OR REPLACE PACKAGE service_inventory_function_pkg AS
+    FUNCTION get_usage_cost(p_service_id IN NUMBER) RETURN NUMBER;
+END service_inventory_function_pkg;
 /
 
--- Execution for get_inventory_value
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('Inventory Value (item_id ): ' || 
-        NVL(TO_CHAR(get_inventory_value(1), '9999.99'), 'Not Found'));
-    DBMS_OUTPUT.PUT_LINE('Inventory Value (item_id ): ' || 
-        NVL(TO_CHAR(get_inventory_value(2), '9999.99'), 'Not Found'));
-END;
-/
+CREATE OR REPLACE PACKAGE BODY service_inventory_function_pkg AS
+    FUNCTION get_usage_cost(p_service_id IN NUMBER)
+    RETURN NUMBER IS
+        v_total_cost NUMBER(10,2);
+    BEGIN
+        SELECT SUM(i.price_per_unit * si.quantity_used)
+        INTO v_total_cost
+        FROM service_inventory si
+        JOIN inventory i ON si.item_id = i.item_id
+        WHERE si.service_id = p_service_id;
+        
+        RETURN NVL(v_total_cost, 0);
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20005, 'Error in get_usage_cost: ' || SQLERRM);
+    END get_usage_cost;
 
--- Function to get total cost of inventory
-CREATE OR REPLACE FUNCTION get_usage_cost(p_service_id IN NUMBER)
-RETURN NUMBER IS
-    v_total_cost NUMBER(10,2);
-BEGIN
-    SELECT SUM(i.price_per_unit * si.quantity_used)
-    INTO v_total_cost
-    FROM service_inventory si
-    JOIN inventory i ON si.item_id = i.item_id
-    WHERE si.service_id = p_service_id;
-    
-    RETURN NVL(v_total_cost, 0);
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20005, 'Error in get_usage_cost: ' || SQLERRM);
-END get_usage_cost;
-/
-
--- Execution for get_usage_cost
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('Usage Cost (service_id ): ' || 
-        NVL(TO_CHAR(get_usage_cost(27), '999.99'), 'Not Found'));
-    DBMS_OUTPUT.PUT_LINE('Usage Cost (service_id ): ' || 
-        NVL(TO_CHAR(get_usage_cost(30), '999.99'), 'Not Found'));
-END;
+END service_inventory_function_pkg;
 /
 
 
