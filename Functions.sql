@@ -513,6 +513,17 @@ CREATE OR REPLACE PACKAGE BODY service_inventory_function_pkg AS
 END service_inventory_function_pkg;
 /
 
+----test for get_usage_cost
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_usage_cost NUMBER;
+BEGIN
+    v_usage_cost := service_inventory_function_pkg.get_usage_cost(1001);
+
+    DBMS_OUTPUT.PUT_LINE('Total usage cost for service 1001: ' || v_usage_cost);
+END;
+/
 
 --INVOICE FUNCTIONS
 --1 a.package specification
