@@ -460,6 +460,32 @@ CREATE OR REPLACE PACKAGE BODY inventory_function_pkg AS
 
 END inventory_function_pkg;
 /
+--
+--test check low function
+DECLARE
+    v_is_low_stock BOOLEAN;
+BEGIN
+    -- Test the function for a specific item ID 
+    v_is_low_stock := inventory_function_pkg.check_low_stock(2041);
+
+    -- Convert BOOLEAN to 'TRUE' or 'FALSE' for displaying
+    IF v_is_low_stock THEN
+        DBMS_OUTPUT.PUT_LINE('Is the stock low? TRUE');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Is the stock low? FALSE');
+    END IF;
+END;
+/
+--
+-- Test for get_inventory_value function
+DECLARE
+    v_inventory_value NUMBER;
+BEGIN
+    -- Test the function for a specific item ID 
+    v_inventory_value := inventory_function_pkg.get_inventory_value(2041);
+    DBMS_OUTPUT.PUT_LINE('Inventory value: ' || v_inventory_value);
+END;
+/
 
 --3 package for functions of servive_inventory table
 CREATE OR REPLACE PACKAGE service_inventory_function_pkg AS
