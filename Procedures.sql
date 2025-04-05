@@ -1422,3 +1422,204 @@ CREATE OR REPLACE PACKAGE BODY service_inventory_pkg AS
 
 END service_inventory_pkg;
 /
+----execution for service service_inventory 
+--execution get service for particular id
+DECLARE
+   v_service_id NUMBER;
+   v_service_type VARCHAR2(100);
+   v_service_date DATE;
+   v_status VARCHAR2(50);
+   v_cost NUMBER;
+   v_cursor SYS_REFCURSOR;
+BEGIN
+   -- Call the procedure using positional notation
+   service_pkg.get_service(
+      1023, v_cursor, v_service_id      
+   );
+
+   DBMS_OUTPUT.PUT_LINE('Service ID from OUT parameter: ' || v_service_id);
+
+   -- Fetch and display the results
+   FETCH v_cursor INTO v_service_id, v_service_type, v_service_date, v_status, v_cost;  
+   DBMS_OUTPUT.PUT_LINE('Service ID: ' || v_service_id);
+   DBMS_OUTPUT.PUT_LINE('Service Type: ' || v_service_type);
+   DBMS_OUTPUT.PUT_LINE('Service Date: ' || v_service_date);
+   DBMS_OUTPUT.PUT_LINE('Status: ' || v_status);
+   DBMS_OUTPUT.PUT_LINE('Cost: ' || v_cost);
+
+   CLOSE v_cursor; 
+END;
+/
+
+--execution for get all services 
+
+DECLARE
+   v_service_id NUMBER;
+   v_service_type VARCHAR2(100);
+   v_service_date DATE;
+   v_status VARCHAR2(50);
+   v_cost NUMBER;
+   v_cursor SYS_REFCURSOR;
+BEGIN
+   -- Call the procedure
+   service_pkg.get_service(NULL, v_cursor, v_service_id);
+   DBMS_OUTPUT.PUT_LINE('Services : ' || v_service_id);
+   -- Loop through all services and fetch their details
+   LOOP
+      FETCH v_cursor INTO v_service_id, v_service_type, v_service_date, v_status, v_cost;
+      EXIT WHEN v_cursor%NOTFOUND; 
+      DBMS_OUTPUT.PUT_LINE('Service ID: ' || v_service_id);
+      DBMS_OUTPUT.PUT_LINE('Service Type: ' || v_service_type);
+      DBMS_OUTPUT.PUT_LINE('Service Date: ' || v_service_date);
+      DBMS_OUTPUT.PUT_LINE('Status: ' || v_status);
+      DBMS_OUTPUT.PUT_LINE('Cost: ' || v_cost);
+   END LOOP;
+
+   CLOSE v_cursor;
+END;
+/
+
+----execution for update service 
+DECLARE
+   v_service_id_out NUMBER; 
+BEGIN
+   service_pkg.update_service(1003,'Completed',80.00,v_service_id_out);
+   DBMS_OUTPUT.PUT_LINE('Updated Service ID: ' || v_service_id_out);
+
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);  
+END;
+/
+
+
+--execution for delete service 
+
+DECLARE
+   v_service_id_out NUMBER;
+BEGIN
+   service_pkg.delete_service(1023, v_service_id_out);
+   DBMS_OUTPUT.PUT_LINE('Deleted Service ID: ' || v_service_id_out);
+
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);  
+END;
+/
+
+select * from service
+
+---execution for add inventory items
+DECLARE
+   v_item_id_out NUMBER;
+BEGIN
+   inventory_pkg.add_inventory_item('Brake Pads', 2, 29.99, v_item_id_out);
+   DBMS_OUTPUT.PUT_LINE('Added Inventory Item ID: ' || v_item_id_out);
+
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);  
+END;
+/
+
+--execution for get inventory
+DECLARE
+   v_cursor SYS_REFCURSOR;
+   v_item_id   inventory.item_id%TYPE;
+   v_item_name inventory.item_name%TYPE;
+   v_quantity  inventory.quantity%TYPE;
+   v_price     inventory.price_per_unit%TYPE;
+BEGIN
+   -- To retrieve all inventory items
+   inventory_pkg.get_inventory(NULL, v_cursor);
+   -- Fetch and display records
+   LOOP
+      FETCH v_cursor INTO v_item_id, v_item_name, v_quantity, v_price;
+      EXIT WHEN v_cursor%NOTFOUND;
+      DBMS_OUTPUT.PUT_LINE('Item ID: ' || v_item_id || 
+                           ', Name: ' || v_item_name || 
+                           ', Quantity: ' || v_quantity || 
+                           ', Price/Unit: ' || v_price);
+   END LOOP;
+   CLOSE v_cursor;
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);  
+END;
+/
+
+--execution for update inventory
+DECLARE
+   v_item_id_out NUMBER;
+BEGIN
+   inventory_pkg.update_inventory(2003, 1, 1200);
+   v_item_id_out := 2003;
+   DBMS_OUTPUT.PUT_LINE('Updated Inventory Item ID: ' || v_item_id_out);
+
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
+
+--execution for delete inventory
+DECLARE
+   v_deleted_item_id NUMBER;
+BEGIN
+   inventory_pkg.delete_inventory(2012, v_deleted_item_id);
+   DBMS_OUTPUT.PUT_LINE('Deleted Inventory Item ID: ' || v_deleted_item_id);
+
+EXCEPTION
+   WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
+
+
+--execution for use inventory 
+DECLARE
+   v_service_id     NUMBER := 1001;   
+   v_item_id        NUMBER := 2001; 
+   v_quantity_used  NUMBER := 4;      
+BEGIN
+   -- Call the use_inventory procedure
+   service_inventory_pkg.use_inventory(v_service_id, v_item_id, v_quantity_used);
+
+   -- Optional: Output a confirmation message
+   DBMS_OUTPUT.PUT_LINE('Inventory usage recorded: Service ID = ' ||
+                        v_service_id || ', Item ID = ' ||
+                        v_item_id || ', Quantity Used = ' ||
+                        v_quantity_used);
+EXCEPTION
+   WHEN OTHERS THEN
+      -- Handle exceptions by outputting the error message
+      DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+END;
+/
+
+
+--execution for get service inventory
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_service_id     service_inventory.service_id%TYPE;
+    v_item_id        service_inventory.item_id%TYPE;
+    v_quantity_used  service_inventory.quantity_used%TYPE;
+BEGIN
+    service_inventory_pkg.get_service_inventory(
+        p_service_id => 1001,  -- Replace with your service ID
+        p_cursor    => v_cursor
+    );
+
+    LOOP
+        FETCH v_cursor INTO v_service_id, v_item_id, v_quantity_used;
+        EXIT WHEN v_cursor%NOTFOUND;
+        -- Process each record (e.g., output the values)
+        DBMS_OUTPUT.PUT_LINE('Service ID: ' || v_service_id ||
+                             ', Item ID: ' || v_item_id ||
+                             ', Quantity Used: ' || v_quantity_used);
+    END LOOP;
+
+    CLOSE v_cursor;
+END;
+/
+
