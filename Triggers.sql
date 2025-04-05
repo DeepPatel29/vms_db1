@@ -611,40 +611,50 @@ FOR EACH ROW
 WHEN (NEW.status = 'Completed') -- Fires only when status is updated to 'Completed'
 DECLARE
     v_invoice_count NUMBER;
-    v_app_id NUMBER;  -- Store app_id separately
+    v_app_id NUMBER;
+    v_cost NUMBER;
 BEGIN
-    -- Fetch app_id from the related table (if not stored in the service table)
-    SELECT app_id INTO v_app_id 
-    FROM appointment  
-    WHERE service_id = :NEW.service_id; 
+    -- Fetch app_id from appointment 
+    BEGIN
+        SELECT app_id INTO v_app_id
+        FROM appointment
+        WHERE service_id = :NEW.service_id
+        AND ROWNUM = 1; -- Ensure only one row is returned
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20003, 'No appointment found for service ID: ' || :NEW.service_id);
+        WHEN TOO_MANY_ROWS THEN
+            RAISE_APPLICATION_ERROR(-20004, 'Multiple appointments found for service ID: ' || :NEW.service_id);
+    END;
 
-    -- Check if an invoice already exists for this service & appointment
-    SELECT COUNT(*) INTO v_invoice_count 
-    FROM invoice 
-    WHERE service_id = :NEW.service_id AND app_id = v_app_id;
+    -- Check for existing invoice
+    SELECT COUNT(*) INTO v_invoice_count
+    FROM invoice
+    WHERE service_id = :NEW.service_id
+    AND app_id = v_app_id;
 
-    -- If no existing invoice, generate a new one
+    v_cost := :NEW.cost;
+
+    -- Generate invoice if none exists
     IF v_invoice_count = 0 THEN
         INSERT INTO invoice (invoice_id, service_id, app_id, total_amount, invoice_date, created_at)
         VALUES (
             invoice_seq.NEXTVAL,  -- Auto-incremented ID
             :NEW.service_id,
-            v_app_id,  -- Use retrieved app_id
-            (SELECT cost FROM service WHERE service_id = :NEW.service_id),  -- Fetch service cost
-            SYSDATE,  -- Invoice date is today
-            SYSTIMESTAMP  -- Record creation timestamp
+            v_app_id,
+            v_cost,  -- Use fetched cost
+            SYSDATE,
+            SYSTIMESTAMP
         );
     END IF;
 
 EXCEPTION
     WHEN NO_DATA_FOUND THEN
-        RAISE_APPLICATION_ERROR(-20003, 'No appointment found for this service ID.');
-
+        RAISE_APPLICATION_ERROR(-20005, 'Service cost not found for service ID: ' || :NEW.service_id);
     WHEN DUP_VAL_ON_INDEX THEN
-        RAISE_APPLICATION_ERROR(-20001, 'Duplicate Invoice Error: Invoice already exists for this service and appointment.');
-    
+        RAISE_APPLICATION_ERROR(-20001, 'Duplicate invoice detected for service ID: ' || :NEW.service_id);
     WHEN OTHERS THEN
-        RAISE_APPLICATION_ERROR(-20002, 'An unexpected error occurred while generating the invoice.');
+        RAISE_APPLICATION_ERROR(-20002, 'Unexpected error in trg_auto_generate_invoice: ' || SQLERRM);
 END;
 /
 
