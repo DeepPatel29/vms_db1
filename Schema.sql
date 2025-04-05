@@ -55,15 +55,26 @@ CREATE TABLE ROLE (
     role_name VARCHAR2(100) 
 );
 
+-- Add NOT NULL and UNIQUE constraint to role_name
+ALTER TABLE ROLE
+MODIFY (role_name VARCHAR2(100) NOT NULL);
+
+ALTER TABLE ROLE
+ADD CONSTRAINT uk_role_name UNIQUE (role_name);
+
 -- Create the USER_TABLE 
 CREATE TABLE USER_TABLE (
     user_id NUMBER PRIMARY KEY,
     role_id NUMBER,
     username VARCHAR2(100) NOT NULL,
     Email VARCHAR2(100) UNIQUE NOT NULL,
-    Password VARCHAR2(100) NOT NULL,
+    Password VARCHAR2(256) NOT NULL,
     FOREIGN KEY (role_id) REFERENCES ROLE(role_id)
 );
+
+-- Modify USER_TABLE table(adding default role_id to be 2(Sales Representative))
+ALTER TABLE USER_TABLE
+MODIFY (role_id NUMBER DEFAULT 2);
 
 -- Create the AUDIT_LOG table 
 CREATE TABLE AUDIT_LOG (
