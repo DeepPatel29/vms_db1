@@ -537,41 +537,7 @@ INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year)
 VALUES (vehicle_seq.NEXTVAL, 5001, 'XYZ789', 'Honda', 'Civic', 2026);  -- Fails
 
 
---Triggers for APPOINTMENT
-CREATE OR REPLACE TRIGGER trg_appointment_overlap
-BEFORE INSERT OR UPDATE ON APPOINTMENT
-FOR EACH ROW
-DECLARE
-    v_count NUMBER;
-BEGIN
-    SELECT COUNT(*)
-    INTO v_count
-    FROM APPOINTMENT
-    WHERE emp_id = :NEW.emp_id
-    AND app_date = :NEW.app_date
-    AND app_time = :NEW.app_time
-    AND app_id != NVL(:NEW.app_id, -1);  -- Exclude the current row during update
-
-    IF v_count > 0 THEN
-        RAISE_APPLICATION_ERROR(-20004, 'Employee already has an appointment at this date and time.');
-    END IF;
-END;
-/
-
-
--- First appointment
-INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id)
-VALUES (appointment_seq.NEXTVAL, 5001, 7002, TO_DATE('2025-11-01', 'YYYY-MM-DD'), 
-        TO_TIMESTAMP('14:00:00', 'HH24:MI:SS'), 'Scheduled', 1001, 1);  -- Succeeds
-
--- Overlapping appointment (fails)
-INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id)
-VALUES (appointment_seq.NEXTVAL, 5002, 7002, TO_DATE('2025-11-01', 'YYYY-MM-DD'), 
-        TO_TIMESTAMP('14:00:00', 'HH24:MI:SS'), 'Scheduled', 1001, 1);  -- Fails
-
-
-
-
+-- Past year (fails)
 CREATE OR REPLACE TRIGGER trg_appointment_date_check
 BEFORE INSERT ON APPOINTMENT
 FOR EACH ROW
@@ -698,42 +664,6 @@ VALUES (23, 2, 1);  -- Used 1 Engine Oil
 
 -- Now check the Service table to see if the cost gets updated
 SELECT * FROM Service WHERE service_id = 23;
-
-
-----------	
---trg_service_status_prevent_change
-
-CREATE OR REPLACE TRIGGER trg_service_status_prevent_change
-BEFORE UPDATE OF status ON Service
-FOR EACH ROW
-DECLARE
-    v_pending_inventory_count NUMBER;
-BEGIN
-    -- Check for pending inventory items (where quantity_used < quantity in inventory)
-    SELECT COUNT(*) INTO v_pending_inventory_count
-    FROM service_inventory si
-    JOIN inventory i ON si.item_id = i.item_id
-    WHERE si.service_id = :OLD.service_id
-      AND si.quantity_used < i.quantity;
-
-    -- If there are any pending items, prevent status change to 'Completed'
-    IF v_pending_inventory_count > 0 AND :NEW.status = 'Completed' THEN
-        RAISE_APPLICATION_ERROR(-20001, 'Cannot change status to Completed due to pending inventory items');
-    END IF;
-
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error occurred in while change: ' || SQLERRM);
-END trg_service_status_prevent_change;
-/
-
---Testing trg_service_status_prevent_change
-
--- Try to change the status to Completed it should fail if inventory is pending
-UPDATE Service
-SET status = 'Completed'
-WHERE service_id = 2;
-
 
 select * from service_inventory
 select * from service
