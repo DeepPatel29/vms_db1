@@ -560,8 +560,7 @@ VALUES (appointment_seq.NEXTVAL, 5001, 7002, SYSDATE - 1, TO_TIMESTAMP('14:00:00
 --=================================================Vehicle and Appointment triggers End=====================================================================
 
 --TRIGGERS :
-
--------
+------------------
 --triggers for trg_service_auto_cost_update
 
 CREATE OR REPLACE TRIGGER trg_service_auto_cost_update
@@ -601,6 +600,35 @@ SELECT * FROM Service WHERE service_id = 23;
 
 select * from service_inventory
 select * from service
+
+-----
+---trigger trg_inventory_qty_warning
+set serveroutput on;
+CREATE OR REPLACE TRIGGER trg_inventory_qty_warning
+BEFORE INSERT OR UPDATE ON inventory
+FOR EACH ROW
+BEGIN
+    IF :NEW.quantity < 5 THEN
+        -- Log a warning instead of raising an error
+        DBMS_OUTPUT.PUT_LINE('Warning: Quantity for item ID ' || :NEW.item_id || 
+                              ' is below the required level. Only ' || :NEW.quantity || ' units available.');
+    END IF;
+END trg_inventory_qty_warning;
+
+--execution for insert 
+BEGIN
+    INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
+    VALUES (2010, 'Brake Fluid', 1, 15.75); 
+END;
+/
+
+--exectuion for update
+BEGIN
+    UPDATE inventory
+    SET quantity = 2
+    WHERE item_id = 2001;  
+END;
+/
 
 
 --=========INVOICE TIGGERS===========
