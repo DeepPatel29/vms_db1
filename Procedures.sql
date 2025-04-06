@@ -1,5 +1,95 @@
 SET SERVEROUTPUT ON;
 
+
+--Authenticate user Procedure
+CREATE OR REPLACE PROCEDURE authenticate_user(
+    p_email IN VARCHAR2,
+    p_password IN VARCHAR2,
+    p_role_name OUT VARCHAR2
+) AS
+    v_user_id NUMBER;
+    v_role_id NUMBER;
+    v_username VARCHAR2(100);
+    v_email VARCHAR2(100);
+    v_stored_password VARCHAR2(100);
+    v_cursor SYS_REFCURSOR;
+    v_found BOOLEAN := FALSE;
+BEGIN
+    -- Fetch all users to find the matching email
+    BEGIN
+        user_procedures.get_user(NULL, v_cursor);
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Error fetching users: ' || SQLERRM);
+            RETURN;
+    END;
+
+    -- Loop through users to find a match
+    LOOP
+        FETCH v_cursor INTO v_user_id, v_role_id, v_username, v_email, v_stored_password;
+        EXIT WHEN v_cursor%NOTFOUND;
+
+        IF UPPER(TRIM(p_email)) = UPPER(TRIM(v_email)) THEN
+            v_found := TRUE;
+            EXIT;
+        END IF;
+    END LOOP;
+    CLOSE v_cursor;
+
+    -- Validate user existence
+    IF NOT v_found THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Invalid email. User with email "' || p_email || '" does not exist.');
+        RETURN;
+    END IF;
+
+    -- Verify password
+    IF v_stored_password != p_password THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Invalid password for user with email "' || p_email || '".');
+        RETURN;
+    END IF;
+
+    -- Get the role name and assign it to the OUT parameter
+    BEGIN
+        p_role_name := role_functions.get_role_name(v_role_id);
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Error retrieving role for email "' || p_email || '": ' || SQLERRM);
+            RETURN;
+    END;
+
+    -- Display authentication result
+    DBMS_OUTPUT.PUT_LINE('Authentication successful! Welcome, ' || v_username || '.');
+    IF UPPER(p_role_name) = 'ADMIN' THEN
+        DBMS_OUTPUT.PUT_LINE('You are logged in as an Admin.');
+    ELSIF UPPER(p_role_name) = 'SALES REPRESENTATIVE' THEN
+        DBMS_OUTPUT.PUT_LINE('You are logged in as a Sales Representative.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('You are logged in with role: ' || p_role_name || '.');
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error during authentication: ' || SQLERRM);
+        IF v_cursor%ISOPEN THEN
+            CLOSE v_cursor;
+        END IF;
+END authenticate_user;
+/
+
+--Testing user authenticate procedure
+-- Anonymous block to call the procedure with user input
+DECLARE
+    v_role_name VARCHAR2(100);
+BEGIN
+    authenticate_user(
+        p_email => TRIM('&Enter_Email'),
+        p_password => '&Enter_Password',
+        p_role_name => v_role_name
+    );
+    DBMS_OUTPUT.PUT_LINE('Returned role: ' || v_role_name);
+END;
+/
+--=======================================================================================================
 -- ROLE Table Procedures Package
 
 CREATE OR REPLACE PACKAGE role_procedures AS
@@ -157,6 +247,7 @@ EXEC role_procedures.delete_role(1);
 -- Delete a role (will execute successfully)
 EXEC role_procedures.delete_role(21);
 
+--===================================================================================================
 
 --USER_TABLE Procedures Package 
 CREATE OR REPLACE PACKAGE user_procedures AS
@@ -403,7 +494,8 @@ BEGIN
 END;
 /
 
-
+--=============================================================================================================
+    
 -- AUDIT_LOG Procedures Package
 CREATE OR REPLACE PACKAGE audit_procedures AS
     -- Procedure to retrieve audit logs with optional filters
@@ -514,7 +606,8 @@ BEGIN
 END;
 /
 
-
+--==========================================================================================================================
+    
 -- CUSTOMER Procedures 
 CREATE OR REPLACE PACKAGE customer_procedures AS
     PROCEDURE add_customer(p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, 
