@@ -523,6 +523,10 @@ CREATE OR REPLACE PACKAGE customer_procedures AS
     PROCEDURE get_customer(p_cust_id IN NUMBER DEFAULT NULL, p_cursor OUT SYS_REFCURSOR);
     PROCEDURE update_customer(p_cust_id IN NUMBER, p_cust_name IN VARCHAR2, p_phone IN VARCHAR2, p_email IN VARCHAR2, p_address IN VARCHAR2);
     PROCEDURE delete_customer(p_cust_id IN NUMBER);
+    PROCEDURE CustomerSearchByPartialName(
+        p_SearchTerm IN VARCHAR2,
+        p_Result OUT SYS_REFCURSOR
+    );
 END customer_procedures;
 /
 
@@ -582,6 +586,30 @@ CREATE OR REPLACE PACKAGE BODY customer_procedures AS
             ROLLBACK;
             RAISE_APPLICATION_ERROR(-20011, 'Error deleting customer: ' || SQLERRM);
     END delete_customer;
+
+    PROCEDURE CustomerSearchByPartialName(
+        p_SearchTerm IN VARCHAR2,
+        p_Result OUT SYS_REFCURSOR
+    )
+    IS
+    BEGIN
+        OPEN p_Result FOR
+            SELECT 
+                cust_id,
+                cust_name,
+                email,
+                phone,
+                address
+            FROM 
+                CUSTOMER
+            WHERE 
+                UPPER(cust_name) LIKE '%' || UPPER(p_SearchTerm) || '%'
+            ORDER BY 
+                cust_name;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Error in CustomerSearchByPartialName: ' || SQLERRM);
+    END CustomerSearchByPartialName;
 END customer_procedures;
 /
 
@@ -628,6 +656,34 @@ EXEC customer_procedures.update_customer(2, 'Vatsal Mistry', '8765432109', 'vats
 SET SERVEROUTPUT ON;
 EXEC customer_procedures.delete_customer(5);
 
+-- Execute using anonymous block
+SET SERVEROUTPUT ON;
+DECLARE
+    l_cursor SYS_REFCURSOR;
+    l_cust_id NUMBER;
+    l_cust_name VARCHAR2(100);
+    l_email VARCHAR2(100);
+    l_phone VARCHAR2(20);
+    l_address VARCHAR2(200);
+BEGIN
+    customer_procedures.CustomerSearchByPartialName(
+        p_SearchTerm => 'test',
+        p_Result => l_cursor
+    );
+    
+    LOOP
+        FETCH l_cursor INTO 
+            l_cust_id,
+            l_cust_name,
+            l_email,
+            l_phone,
+            l_address;
+        EXIT WHEN l_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('Customer: ' || l_cust_name || ' - ' || l_email);
+    END LOOP;
+    CLOSE l_cursor;
+END;
+/
 
 
 -- VEHICLE Procedures 
