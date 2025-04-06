@@ -4,14 +4,14 @@ SET SERVEROUTPUT ON;
 --Authenticate user Procedure
 CREATE OR REPLACE PROCEDURE authenticate_user(
     p_email IN VARCHAR2,
-    p_password IN VARCHAR2
+    p_password IN VARCHAR2,
+    p_role_name OUT VARCHAR2
 ) AS
     v_user_id NUMBER;
     v_role_id NUMBER;
     v_username VARCHAR2(100);
     v_email VARCHAR2(100);
     v_stored_password VARCHAR2(100);
-    v_role_name VARCHAR2(100);
     v_cursor SYS_REFCURSOR;
     v_found BOOLEAN := FALSE;
 BEGIN
@@ -48,9 +48,9 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Get the role name
+    -- Get the role name and assign it to the OUT parameter
     BEGIN
-        v_role_name := role_functions.get_role_name(v_role_id);
+        p_role_name := role_functions.get_role_name(v_role_id);
     EXCEPTION
         WHEN OTHERS THEN
             DBMS_OUTPUT.PUT_LINE('Error retrieving role for email "' || p_email || '": ' || SQLERRM);
@@ -59,12 +59,12 @@ BEGIN
 
     -- Display authentication result
     DBMS_OUTPUT.PUT_LINE('Authentication successful! Welcome, ' || v_username || '.');
-    IF UPPER(v_role_name) = 'ADMIN' THEN
+    IF UPPER(p_role_name) = 'ADMIN' THEN
         DBMS_OUTPUT.PUT_LINE('You are logged in as an Admin.');
-    ELSIF UPPER(v_role_name) = 'SALES REPRESENTATIVE' THEN
+    ELSIF UPPER(p_role_name) = 'SALES REPRESENTATIVE' THEN
         DBMS_OUTPUT.PUT_LINE('You are logged in as a Sales Representative.');
     ELSE
-        DBMS_OUTPUT.PUT_LINE('You are logged in with role: ' || v_role_name || '.');
+        DBMS_OUTPUT.PUT_LINE('You are logged in with role: ' || p_role_name || '.');
     END IF;
 
 EXCEPTION
@@ -76,10 +76,17 @@ EXCEPTION
 END authenticate_user;
 /
 
--- Executing authenticate_user Procedure:
+--Testing user authenticate procedure
 -- Anonymous block to call the procedure with user input
+DECLARE
+    v_role_name VARCHAR2(100);
 BEGIN
-    authenticate_user(TRIM('&Enter_Email'), '&Enter_Password');
+    authenticate_user(
+        p_email => TRIM('&Enter_Email'),
+        p_password => '&Enter_Password',
+        p_role_name => v_role_name
+    );
+    DBMS_OUTPUT.PUT_LINE('Returned role: ' || v_role_name);
 END;
 /
 --=======================================================================================================
