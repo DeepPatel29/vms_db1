@@ -167,78 +167,27 @@ END;
 --Use case for Admin
 
 DECLARE
-    v_input_email VARCHAR2(100);    -- Input email
-    v_input_password VARCHAR2(100); -- Input password
-    v_user_id NUMBER;
-    v_role_id NUMBER;
-    v_username VARCHAR2(100); 
-    v_email VARCHAR2(100);
-    v_stored_password VARCHAR2(100);
     v_role_name VARCHAR2(100);
-    v_cursor SYS_REFCURSOR;
-    v_found BOOLEAN := FALSE;
     v_total_value NUMBER;
-
 BEGIN
-    -- Prompt for user input 
-    v_input_email := TRIM('&Enter_Email');      
-    v_input_password := '&Enter_Password';       
-    
-    -- Fetch all users to find the matching email
-    BEGIN
-        user_procedures.get_user(NULL, v_cursor); -- Fetch all users
-    EXCEPTION
-        WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Error fetching users: ' || SQLERRM);
-            RETURN;
-    END;
+    -- Call the authentication procedure with user input
+    authenticate_user(
+        p_email => TRIM('&Enter_Email'),
+        p_password => '&Enter_Password',
+        p_role_name => v_role_name
+    );
 
-    -- Loop through users to find a match for the email
-    LOOP
-        FETCH v_cursor INTO v_user_id, v_role_id, v_username, v_email, v_stored_password;
-        EXIT WHEN v_cursor%NOTFOUND;
-
-        IF UPPER(TRIM(v_input_email)) = UPPER(TRIM(v_email)) THEN
-            v_found := TRUE;
-            EXIT;
-        END IF;
-    END LOOP;
-    CLOSE v_cursor;
-
-    -- Validate user existence
-    IF NOT v_found THEN
-        DBMS_OUTPUT.PUT_LINE('Error: Invalid email. User with email "' || v_input_email || '" does not exist.');
-        RETURN;
-    END IF;
-
-    -- Verify password
-    IF v_stored_password != v_input_password THEN
-        DBMS_OUTPUT.PUT_LINE('Error: Invalid password for user with email "' || v_input_email || '".');
-        RETURN;
-    END IF;
-
-    -- Get the role name
-    BEGIN
-        v_role_name := role_functions.get_role_name(v_role_id);
-    EXCEPTION
-        WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Error retrieving role for email "' || v_input_email || '": ' || SQLERRM);
-            RETURN;
-    END;
-
-    -- Authenticate and proceed based on role
-    DBMS_OUTPUT.PUT_LINE('Authentication successful! Welcome, ' || v_username || '.');
+    -- Proceed based on role (if authentication succeeds, execution continues)
     IF UPPER(v_role_name) = 'ADMIN' THEN
-        DBMS_OUTPUT.PUT_LINE('You are logged in as an Admin.');
 
         -- Admin Task 1: Update inventory quantity
         BEGIN
             inventory_pkg.update_inventory(
                 p_item_id => 2001, -- Spark Plugs
-                p_quantity => 150, -- Update from 200 to 150
+                p_quantity => 150, -- Update from 150 to 200
                 p_price_per_unit => 10.00
             );
-            DBMS_OUTPUT.PUT_LINE('Inventory for item 2001 updated to 150 units.');
+            DBMS_OUTPUT.PUT_LINE('Inventory for item 2001 updated to 200 units.');
         EXCEPTION
             WHEN OTHERS THEN
                 DBMS_OUTPUT.PUT_LINE('Error updating inventory: ' || SQLERRM);
@@ -259,10 +208,7 @@ BEGIN
 
 EXCEPTION
     WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error during authentication: ' || SQLERRM);
-        IF v_cursor%ISOPEN THEN
-            CLOSE v_cursor;
-        END IF;
+        DBMS_OUTPUT.PUT_LINE('Unexpected error: ' || SQLERRM);
 END;
 /
 
@@ -270,71 +216,20 @@ END;
 --============================= USE CASE 4 ==================================
 --Use case for Sales Representative
 DECLARE
-    v_input_email VARCHAR2(100);    -- Input email
-    v_input_password VARCHAR2(100); -- Input password
-    v_user_id NUMBER;
-    v_role_id NUMBER;
-    v_username VARCHAR2(100); 
-    v_email VARCHAR2(100);
-    v_stored_password VARCHAR2(100);
     v_role_name VARCHAR2(100);
-    v_cursor SYS_REFCURSOR;
-    v_found BOOLEAN := FALSE;
     v_app_id NUMBER;
     v_invoice_total NUMBER;
     v_is_valid BOOLEAN;
-
 BEGIN
-    -- Prompt for user input 
-    v_input_email := TRIM('&Enter_Email');      
-    v_input_password := '&Enter_Password';       
+    -- Call the authentication procedure with user input
+    authenticate_user(
+        p_email => TRIM('&Enter_Email'),
+        p_password => '&Enter_Password',
+        p_role_name => v_role_name
+    );
 
-    -- Fetch all users to find the matching email
-    BEGIN
-        user_procedures.get_user(NULL, v_cursor); -- Fetch all users
-    EXCEPTION
-        WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Error fetching users: ' || SQLERRM);
-            RETURN;
-    END;
-
-    -- Loop through users to find a match for the email
-    LOOP
-        FETCH v_cursor INTO v_user_id, v_role_id, v_username, v_email, v_stored_password;
-        EXIT WHEN v_cursor%NOTFOUND;
-
-        IF UPPER(TRIM(v_input_email)) = UPPER(TRIM(v_email)) THEN
-            v_found := TRUE;
-            EXIT;
-        END IF;
-    END LOOP;
-    CLOSE v_cursor;
-
-    -- Validate user existence
-    IF NOT v_found THEN
-        DBMS_OUTPUT.PUT_LINE('Error: Invalid email. User with email "' || v_input_email || '" does not exist.');
-        RETURN;
-    END IF;
-
-    -- Verify password
-    IF v_stored_password != v_input_password THEN
-        DBMS_OUTPUT.PUT_LINE('Error: Invalid password for user with email "' || v_input_email || '".');
-        RETURN;
-    END IF;
-
-    -- Get the role name
-    BEGIN
-        v_role_name := role_functions.get_role_name(v_role_id);
-    EXCEPTION
-        WHEN OTHERS THEN
-            DBMS_OUTPUT.PUT_LINE('Error retrieving role for email "' || v_input_email || '": ' || SQLERRM);
-            RETURN;
-    END;
-
-    -- Authenticate and proceed based on role
-    DBMS_OUTPUT.PUT_LINE('Authentication successful! Welcome, ' || v_username || '.');
+    -- Proceed based on role (if authentication succeeds, execution continues)
     IF UPPER(v_role_name) = 'SALES REPRESENTATIVE' THEN
-        DBMS_OUTPUT.PUT_LINE('You are logged in as a Sales Representative.');
 
         -- Sales Rep Task 1: Validate a future appointment date
         BEGIN
@@ -368,10 +263,7 @@ BEGIN
 
 EXCEPTION
     WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error during authentication: ' || SQLERRM);
-        IF v_cursor%ISOPEN THEN
-            CLOSE v_cursor;
-        END IF;
+        DBMS_OUTPUT.PUT_LINE('Unexpected error: ' || SQLERRM);
 END;
 /
 
