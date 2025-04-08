@@ -1374,8 +1374,10 @@ END;
 
 SET SERVEROUTPUT ON;
 EXEC get_all_payments;
------
+
 --------------------------------------------------------------------------
+==========================================================================
+--Procedure for service, service_inventory and inventory table
 SET SERVEROUTPUT ON;
 
 --1 package for service table
@@ -1565,18 +1567,19 @@ END inventory_pkg;
 
 --3 package for service_inventory table
 CREATE OR REPLACE PACKAGE service_inventory_pkg AS
-    PROCEDURE use_inventory(p_service_id IN NUMBER, p_item_id IN NUMBER, p_quantity_used IN NUMBER);
+    PROCEDURE use_inventory(p_service_id IN OUT NUMBER, p_item_id IN NUMBER, p_quantity_used IN OUT NUMBER);
     PROCEDURE get_service_inventory(p_service_id IN NUMBER, p_cursor OUT SYS_REFCURSOR);
     PROCEDURE delete_service_inventory(p_service_id IN NUMBER, p_item_id IN NUMBER);
 END service_inventory_pkg;
 /
+
 -- body of service_inventory_pkg
 CREATE OR REPLACE PACKAGE BODY service_inventory_pkg AS
 
     PROCEDURE use_inventory (
-        p_service_id IN NUMBER,
+        p_service_id IN OUT NUMBER,
         p_item_id IN NUMBER,
-        p_quantity_used IN NUMBER
+        p_quantity_used IN OUT NUMBER
     ) AS
     BEGIN
         INSERT INTO service_inventory (service_id, item_id, quantity_used)
@@ -1613,37 +1616,86 @@ CREATE OR REPLACE PACKAGE BODY service_inventory_pkg AS
 
 END service_inventory_pkg;
 /
-----execution for service service_inventory 
---execution get service for particular id
-DECLARE
-   v_service_id NUMBER;
-   v_service_type VARCHAR2(100);
-   v_service_date DATE;
-   v_status VARCHAR2(50);
-   v_cost NUMBER;
-   v_cursor SYS_REFCURSOR;
+-- procedure for search_service_by_type
+CREATE OR REPLACE PROCEDURE search_service_by_type (
+    p_type_name IN VARCHAR2
+)
+IS
+    v_found BOOLEAN := FALSE;
 BEGIN
-   -- Call the procedure using positional notation
-   service_pkg.get_service(
-      1023, v_cursor, v_service_id      
-   );
+    FOR rec IN (
+        SELECT service_id, service_type, service_date, status, cost
+        FROM service
+        WHERE LOWER(service_type) LIKE '%' || LOWER(p_type_name) || '%'
+    ) LOOP
+        v_found := TRUE;
+        DBMS_OUTPUT.PUT_LINE('ID: ' || rec.service_id || 
+                             ', Type: ' || rec.service_type || 
+                             ', Status: ' || rec.status || 
+                             ', Cost: ' || rec.cost);
+    END LOOP;
 
-   DBMS_OUTPUT.PUT_LINE('Service ID from OUT parameter: ' || v_service_id);
+    IF NOT v_found THEN
+        DBMS_OUTPUT.PUT_LINE('No services found for type: ' || p_type_name);
+    END IF;
 
-   -- Fetch and display the results
-   FETCH v_cursor INTO v_service_id, v_service_type, v_service_date, v_status, v_cost;  
-   DBMS_OUTPUT.PUT_LINE('Service ID: ' || v_service_id);
-   DBMS_OUTPUT.PUT_LINE('Service Type: ' || v_service_type);
-   DBMS_OUTPUT.PUT_LINE('Service Date: ' || v_service_date);
-   DBMS_OUTPUT.PUT_LINE('Status: ' || v_status);
-   DBMS_OUTPUT.PUT_LINE('Cost: ' || v_cost);
-
-   CLOSE v_cursor; 
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
 END;
 /
 
---execution for get all services 
+---procedure for search_service_inventory_by_item_id
+CREATE OR REPLACE PROCEDURE search_service_inventory_by_item_id (
+    p_item_id IN VARCHAR2
+)
+IS
+    v_found BOOLEAN := FALSE;
+BEGIN
+    FOR rec IN (
+        SELECT service_id, item_id, quantity_used
+        FROM service_inventory
+        WHERE LOWER(item_id) LIKE '%' || LOWER(p_item_id) || '%'
+    ) LOOP
+        v_found := TRUE;
+        DBMS_OUTPUT.PUT_LINE('Service ID: ' || rec.service_id ||
+                             ', Item ID: ' || rec.item_id ||
+                             ', Quantity Used: ' || rec.quantity_used);
+    END LOOP;
 
+    IF NOT v_found THEN
+        DBMS_OUTPUT.PUT_LINE('No service inventory records found for item ID: ' || p_item_id);
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+END;
+/
+-------------------------------------
+---EXECUTION---
+-------------------------------------
+--execution add service
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+   v_service_id NUMBER;
+BEGIN
+   service_pkg.add_service(
+      'Air filter change', 
+      SYSDATE, 
+      'pending', 
+      120.00, 
+      v_service_id 
+   );
+
+   DBMS_OUTPUT.PUT_LINE('Service added with ID: ' || v_service_id);
+END;
+/
+
+
+--execution for get all services 
 DECLARE
    v_service_id NUMBER;
    v_service_type VARCHAR2(100);
@@ -1674,44 +1726,42 @@ END;
 DECLARE
    v_service_id_out NUMBER; 
 BEGIN
-   service_pkg.update_service(1003,'Completed',80.00,v_service_id_out);
+   service_pkg.update_service(1030,'pending',80.00,v_service_id_out);
    DBMS_OUTPUT.PUT_LINE('Updated Service ID: ' || v_service_id_out);
 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);  
+      DBMS_OUTPUT.PUT_LINE('Error: while updating service ' || SQLERRM);  
 END;
 /
 
 
 --execution for delete service 
-
 DECLARE
    v_service_id_out NUMBER;
 BEGIN
-   service_pkg.delete_service(1023, v_service_id_out);
+   service_pkg.delete_service(1024, v_service_id_out);
    DBMS_OUTPUT.PUT_LINE('Deleted Service ID: ' || v_service_id_out);
 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);  
+      DBMS_OUTPUT.PUT_LINE('Error occurred while deleting service: ' || SQLERRM);  
 END;
 /
-
-select * from service
 
 ---execution for add inventory items
 DECLARE
    v_item_id_out NUMBER;
 BEGIN
-   inventory_pkg.add_inventory_item('Brake Pads', 2, 29.99, v_item_id_out);
+   inventory_pkg.add_inventory_item('Wheel', 8, 100, v_item_id_out);
    DBMS_OUTPUT.PUT_LINE('Added Inventory Item ID: ' || v_item_id_out);
 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);  
+      DBMS_OUTPUT.PUT_LINE('Error occured while add new inventory ' || SQLERRM);  
 END;
 /
+
 
 --execution for get inventory
 DECLARE
@@ -1735,7 +1785,7 @@ BEGIN
    CLOSE v_cursor;
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);  
+      DBMS_OUTPUT.PUT_LINE('Error occured while getting all inventory ' || SQLERRM);  
 END;
 /
 
@@ -1743,7 +1793,7 @@ END;
 DECLARE
    v_item_id_out NUMBER;
 BEGIN
-   inventory_pkg.update_inventory(2003, 1, 1200);
+   inventory_pkg.update_inventory(2010, 8, 120);
    v_item_id_out := 2003;
    DBMS_OUTPUT.PUT_LINE('Updated Inventory Item ID: ' || v_item_id_out);
 
@@ -1757,12 +1807,12 @@ END;
 DECLARE
    v_deleted_item_id NUMBER;
 BEGIN
-   inventory_pkg.delete_inventory(2012, v_deleted_item_id);
+   inventory_pkg.delete_inventory(2061, v_deleted_item_id);
    DBMS_OUTPUT.PUT_LINE('Deleted Inventory Item ID: ' || v_deleted_item_id);
 
 EXCEPTION
    WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+      DBMS_OUTPUT.PUT_LINE('Error occured while deleteing inventory ' || SQLERRM);
 END;
 /
 
@@ -1790,29 +1840,74 @@ END;
 
 
 --execution for get service inventory
-DECLARE
-    v_cursor SYS_REFCURSOR;
-    v_service_id     service_inventory.service_id%TYPE;
-    v_item_id        service_inventory.item_id%TYPE;
-    v_quantity_used  service_inventory.quantity_used%TYPE;
-BEGIN
-    service_inventory_pkg.get_service_inventory(
-        p_service_id => 1001,  -- Replace with your service ID
-        p_cursor    => v_cursor
-    );
+SET SERVEROUTPUT ON;
 
+DECLARE
+    v_service_id NUMBER := 1003; 
+    v_cursor SYS_REFCURSOR;
+    v_service_id_out NUMBER;
+    v_item_id NUMBER;
+    v_quantity_used NUMBER;
+BEGIN
+    -- Call the get_service_inventory procedure
+    service_inventory_pkg.get_service_inventory(p_service_id => v_service_id, p_cursor => v_cursor);
+
+    -- Loop through the cursor and display the results
     LOOP
-        FETCH v_cursor INTO v_service_id, v_item_id, v_quantity_used;
+        FETCH v_cursor INTO v_service_id_out, v_item_id, v_quantity_used;
         EXIT WHEN v_cursor%NOTFOUND;
-        -- Process each record (e.g., output the values)
-        DBMS_OUTPUT.PUT_LINE('Service ID: ' || v_service_id ||
-                             ', Item ID: ' || v_item_id ||
+        DBMS_OUTPUT.PUT_LINE('Service ID: ' || v_service_id_out || 
+                             ', Item ID: ' || v_item_id || 
                              ', Quantity Used: ' || v_quantity_used);
     END LOOP;
 
+    -- Close the cursor
     CLOSE v_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
 END;
 /
+
+--execution for delete_service_inventory
+DECLARE
+    -- Declare variables for service_id and item_id
+    v_service_id   NUMBER := 1001;  
+    v_item_id      NUMBER := 2001;  
+BEGIN
+    -- Call the delete_service_inventory procedure
+    service_inventory_pkg.delete_service_inventory(p_service_id => v_service_id, p_item_id => v_item_id);
+
+    -- Output a confirmation message
+    DBMS_OUTPUT.PUT_LINE('Service inventory record deleted successfully for Service ID: ' || v_service_id || ' and Item ID: ' || v_item_id);
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Handle exceptions by outputting the error message
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+END;
+/
+ --execution for search_service_by_type
+
+BEGIN
+    search_service_by_type('oil'); 
+END;
+/
+
+BEGIN
+    search_service_by_type('OIL'); 
+END;
+/
+
+BEGIN
+    search_service_by_type('Wh'); 
+END;
+/
+--execution for search_service_inventory_by_item_id
+BEGIN
+    search_service_inventory_by_item_id('2002');
+END;
+===================================================
 
 
 --procedure for customer search by partial name

@@ -367,13 +367,10 @@ EXCEPTION
 END;
 /
 
-
-
-
----
 -------
---FUNCTIONS :
----------------
+==============================================================================
+--Functions for service, service_inventory and inventory table
+
 --package for functions of service table
 CREATE OR REPLACE PACKAGE service_function_pkg AS
     FUNCTION get_service_cost(p_service_id IN NUMBER) RETURN NUMBER;
@@ -396,7 +393,7 @@ CREATE OR REPLACE PACKAGE BODY service_function_pkg AS
         WHEN OTHERS THEN
             RAISE_APPLICATION_ERROR(-20001, 'Error in get_service_cost: ' || SQLERRM);
     END get_service_cost;
-
+---
     FUNCTION is_service_completed(p_service_id IN NUMBER)
     RETURN BOOLEAN IS
         v_status VARCHAR2(100);
@@ -416,6 +413,46 @@ CREATE OR REPLACE PACKAGE BODY service_function_pkg AS
 END service_function_pkg;
 /
 
+--test for get_service_cost
+DECLARE
+    -- Declare a variable to store the returned cost
+    v_service_cost NUMBER(10, 2);
+BEGIN
+    -- Call the get_service_cost function
+    v_service_cost := service_function_pkg.get_service_cost(p_service_id => 1003);  
+
+    -- Output the cost
+    IF v_service_cost IS NOT NULL THEN
+        DBMS_OUTPUT.PUT_LINE('Service cost for Service ID : ' || v_service_cost);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('No cost found for Service ID .');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Handle any unexpected errors
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+END;
+/
+
+--test for is_service_completed
+DECLARE
+    v_service_completed BOOLEAN;
+BEGIN
+    -- Call the is_service_completed function
+    v_service_completed := service_function_pkg.is_service_completed(p_service_id => 1003);  
+
+    -- Output the status
+    IF v_service_completed THEN
+        DBMS_OUTPUT.PUT_LINE('Service ID 1003 is completed.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Service ID 1003 is not completed.');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Handle any unexpected errors
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+END;
+/
 
 
 --2 package for functions of inventory table
@@ -460,23 +497,22 @@ CREATE OR REPLACE PACKAGE BODY inventory_function_pkg AS
 
 END inventory_function_pkg;
 /
---
 --test check low function
 DECLARE
     v_is_low_stock BOOLEAN;
 BEGIN
-    -- Test the function for a specific item ID 
-    v_is_low_stock := inventory_function_pkg.check_low_stock(2041);
+    -- Test the function for a specific item ID
+    v_is_low_stock := inventory_function_pkg.check_low_stock(2021);
 
     -- Convert BOOLEAN to 'TRUE' or 'FALSE' for displaying
     IF v_is_low_stock THEN
-        DBMS_OUTPUT.PUT_LINE('Is the stock low? TRUE');
+        DBMS_OUTPUT.PUT_LINE('Is the stock Quantity < 10 ? TRUE');
     ELSE
-        DBMS_OUTPUT.PUT_LINE('Is the stock low? FALSE');
+        DBMS_OUTPUT.PUT_LINE('Is the stock Quantity > 10 ? FALSE');
     END IF;
 END;
 /
---
+
 -- Test for get_inventory_value function
 DECLARE
     v_inventory_value NUMBER;
@@ -486,6 +522,7 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE('Inventory value: ' || v_inventory_value);
 END;
 /
+
 
 --3 package for functions of servive_inventory table
 CREATE OR REPLACE PACKAGE service_inventory_function_pkg AS
@@ -513,15 +550,15 @@ CREATE OR REPLACE PACKAGE BODY service_inventory_function_pkg AS
 END service_inventory_function_pkg;
 /
 
-----test for get_usage_cost
+--test for get usage cost
 SET SERVEROUTPUT ON;
 
 DECLARE
     v_usage_cost NUMBER;
 BEGIN
-    v_usage_cost := service_inventory_function_pkg.get_usage_cost(1001);
+    v_usage_cost := service_inventory_function_pkg.get_usage_cost(1006);
 
-    DBMS_OUTPUT.PUT_LINE('Total usage cost for service 1001: ' || v_usage_cost);
+    DBMS_OUTPUT.PUT_LINE('Total usage cost for service_ID 1006: ' || v_usage_cost);
 END;
 /
 

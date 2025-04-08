@@ -559,8 +559,9 @@ VALUES (appointment_seq.NEXTVAL, 5001, 7002, SYSDATE - 1, TO_TIMESTAMP('14:00:00
 
 --=================================================Vehicle and Appointment triggers End=====================================================================
 
---TRIGGERS :
-------------------
+==============================================================================
+--Triggers for service, service_inventory and inventory table
+
 --triggers for trg_service_auto_cost_update
 
 CREATE OR REPLACE TRIGGER trg_service_auto_cost_update
@@ -590,18 +591,19 @@ EXCEPTION
 END trg_service_auto_cost_update;
 /
 
---testing Auto cost update 
--- Insert service_inventory 
+--testing Auto cost update
+
 INSERT INTO service_inventory (service_id, item_id, quantity_used)
-VALUES (23, 2, 1);  -- Used 1 Engine Oil
+VALUES (1003, 2022, 6); 
 
--- Now check the Service table to see if the cost gets updated
-SELECT * FROM Service WHERE service_id = 23;
+UPDATE service_inventory
+SET quantity_used = 5
+WHERE service_id = 1003 AND item_id = 2022;
 
-select * from service_inventory
-select * from service
+SELECT service_id, cost
+FROM Service
+WHERE service_id = 1003;
 
------
 ---trigger trg_inventory_qty_warning
 set serveroutput on;
 CREATE OR REPLACE TRIGGER trg_inventory_qty_warning
@@ -615,22 +617,21 @@ BEGIN
     END IF;
 END trg_inventory_qty_warning;
 
+
 --execution for insert 
 BEGIN
     INSERT INTO inventory (item_id, item_name, quantity, price_per_unit)
-    VALUES (2010, 'Brake Fluid', 1, 15.75); 
+    VALUES (2013, 'Brake Fluid', 2, 100); 
 END;
 /
 
 --exectuion for update
 BEGIN
     UPDATE inventory
-    SET quantity = 2
-    WHERE item_id = 2001;  
+    SET quantity = 3
+    WHERE item_id = 2013;  
 END;
 /
-
-
 --=========INVOICE TIGGERS===========
 -- 1..Trigger to auto generate invoices when a service is marked 'Completed'. 
 CREATE OR REPLACE TRIGGER trg_auto_generate_invoice
