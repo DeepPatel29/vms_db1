@@ -1772,3 +1772,257 @@ BEGIN
 END;
 /
 
+
+--procedure for customer search by partial name
+CREATE OR REPLACE PROCEDURE customer_search_by_partial_name (
+    p_partial_name IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT cust_id, cust_name, phone, email, address
+        FROM CUSTOMER
+        WHERE UPPER(cust_name) LIKE UPPER('%' || TRIM(p_partial_name) || '%');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Error searching customers by name: ' || SQLERRM);
+END customer_search_by_partial_name;
+/
+
+-- Test the procedure
+SET SERVEROUTPUT ON;
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_cust_id NUMBER;
+    v_cust_name VARCHAR2(100);
+    v_phone VARCHAR2(20);
+    v_email VARCHAR2(100);
+    v_address VARCHAR2(200);
+BEGIN
+    customer_search_by_partial_name('test', v_cursor);
+    LOOP
+        FETCH v_cursor INTO v_cust_id, v_cust_name, v_phone, v_email, v_address;
+        EXIT WHEN v_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('ID: ' || v_cust_id || ', Name: ' || v_cust_name || ', Email: ' || v_email);
+    END LOOP;
+    CLOSE v_cursor;
+END;
+/
+
+
+--procedure for customer search by email
+CREATE OR REPLACE PROCEDURE customer_search_by_email (
+    p_email IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT cust_id, cust_name, phone, email, address
+        FROM CUSTOMER
+        WHERE UPPER(email) = UPPER(TRIM(p_email));
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Error searching customer by email: ' || SQLERRM);
+END customer_search_by_email;
+/
+
+
+-- Procedure for vehicle search by customer ID
+CREATE OR REPLACE PROCEDURE vehicle_search_by_cust_id (
+    p_cust_id IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT vehicle_id, cust_id, licence_plate, make, model, year
+        FROM VEHICLE
+        WHERE cust_id = p_cust_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Error searching vehicles by customer ID: ' || SQLERRM);
+END vehicle_search_by_cust_id;
+/
+
+
+-- Procedure for employee search by partial name
+CREATE OR REPLACE PROCEDURE employee_search_by_partial_name (
+    p_partial_name IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked
+        FROM EMPLOYEE
+        WHERE UPPER(emp_name) LIKE UPPER('%' || TRIM(p_partial_name) || '%');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Error searching employees by name: ' || SQLERRM);
+END employee_search_by_partial_name;
+/
+
+
+-- Procedure for employee search by position
+CREATE OR REPLACE PROCEDURE employee_search_by_position (
+    p_position IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked
+        FROM EMPLOYEE
+        WHERE UPPER(position) = UPPER(TRIM(p_position));
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Error searching employees by position: ' || SQLERRM);
+END employee_search_by_position;
+/
+
+
+-- Procedure for appointment search by vehicle ID
+CREATE OR REPLACE PROCEDURE appointment_search_by_vehicle_id (
+    p_vehicle_id IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id
+        FROM APPOINTMENT
+        WHERE vehicle_id = p_vehicle_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20006, 'Error searching appointments by vehicle ID: ' || SQLERRM);
+END appointment_search_by_vehicle_id;
+/
+
+-- Procedure for appointment search by customer ID
+CREATE OR REPLACE PROCEDURE appointment_search_by_cust_id (
+    p_cust_id IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id
+        FROM APPOINTMENT
+        WHERE cust_id = p_cust_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20007, 'Error searching appointments by customer ID: ' || SQLERRM);
+END appointment_search_by_cust_id;
+/
+
+--genrate invoices
+CREATE OR REPLACE PROCEDURE generate_invoice (
+    p_app_id IN NUMBER,
+    p_description IN VARCHAR2,
+    p_total_amount IN NUMBER,
+    p_invoice_id OUT NUMBER,
+    p_invoice_date OUT DATE,
+    p_total_amount_out OUT NUMBER,
+    p_cust_name OUT VARCHAR2,
+    p_address OUT VARCHAR2,
+    p_email OUT VARCHAR2,
+    p_contact OUT VARCHAR2,
+    p_licence_plate OUT VARCHAR2,
+    p_description_out OUT VARCHAR2
+) AS
+BEGIN
+    -- Validate inputs
+    IF p_app_id IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Appointment ID cannot be null.');
+    END IF;
+
+    IF p_description IS NULL OR LENGTH(TRIM(p_description)) = 0 THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Description cannot be null or empty.');
+    END IF;
+
+    IF p_total_amount <= 0 THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Total amount must be greater than zero.');
+    END IF;
+
+    -- Fetch invoice, customer, and vehicle details using app_id
+    SELECT 
+        i.invoice_id,
+        i.invoice_date,
+        c.cust_name,
+        c.address,
+        c.email,
+        c.phone,
+        v.licence_plate
+    INTO 
+        p_invoice_id,
+        p_invoice_date,
+        p_cust_name,
+        p_address,
+        p_email,
+        p_contact,
+        p_licence_plate
+    FROM INVOICE i
+    JOIN APPOINTMENT a ON i.app_id = a.app_id
+    JOIN CUSTOMER c ON a.cust_id = c.cust_id
+    JOIN VEHICLE v ON a.vehicle_id = v.vehicle_id
+    WHERE a.app_id = p_app_id;
+
+    -- Set the total_amount_out to the input total_amount
+    p_total_amount_out := p_total_amount;
+
+    -- Set the description
+    p_description_out := p_description;
+
+    -- Output success message
+    DBMS_OUTPUT.PUT_LINE('Invoice details retrieved successfully for Appointment ID: ' || p_app_id);
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20005, 'No invoice found for Appointment ID: ' || p_app_id);
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20006, 'Error in generate_invoice for Appointment ID ' || p_app_id || ': ' || SQLERRM);
+END generate_invoice;
+/
+
+--Execution of generate_invoice procedure
+-- This block demonstrates how to call the generate_invoice procedure and display the results.
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_invoice_id NUMBER;
+    v_invoice_date DATE;
+    v_total_amount NUMBER;
+    v_cust_name VARCHAR2(50);
+    v_address VARCHAR2(255);
+    v_email VARCHAR2(50);
+    v_contact VARCHAR2(13);
+    v_licence_plate VARCHAR2(20);
+    v_description VARCHAR2(250);
+BEGIN
+    -- Call the procedure
+    generate_invoice(
+        p_app_id => 9004,
+        p_description => 'Website Development',
+        p_total_amount => 25000.00,
+        p_invoice_id => v_invoice_id,
+        p_invoice_date => v_invoice_date,
+        p_total_amount_out => v_total_amount,
+        p_cust_name => v_cust_name,
+        p_address => v_address,
+        p_email => v_email,
+        p_contact => v_contact,
+        p_licence_plate => v_licence_plate,
+        p_description_out => v_description
+    );
+
+    -- Display the results
+    DBMS_OUTPUT.PUT_LINE('Invoice ID: ' || v_invoice_id);
+    DBMS_OUTPUT.PUT_LINE('Invoice Date: ' || TO_CHAR(v_invoice_date, 'YYYY-MM-DD'));
+    DBMS_OUTPUT.PUT_LINE('Total Amount: ' || v_total_amount);
+    DBMS_OUTPUT.PUT_LINE('Customer Name: ' || v_cust_name);
+    DBMS_OUTPUT.PUT_LINE('Address: ' || v_address);
+    DBMS_OUTPUT.PUT_LINE('Email: ' || v_email);
+    DBMS_OUTPUT.PUT_LINE('Contact: ' || v_contact);
+    DBMS_OUTPUT.PUT_LINE('Licence Plate: ' || v_licence_plate);
+    DBMS_OUTPUT.PUT_LINE('Description: ' || v_description);
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
