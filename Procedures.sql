@@ -1207,6 +1207,26 @@ END;
 /
 
 
+--procedure to get all invoices
+CREATE OR REPLACE PROCEDURE get_all_invoices
+IS
+BEGIN
+    FOR inv IN (
+        SELECT invoice_id, service_id, invoice_date, total_amount, created_at
+        FROM invoice
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE('Invoice ID: ' || inv.invoice_id ||
+                             ', Service ID: ' || inv.service_id ||
+                             ', Invoice Date: ' || TO_CHAR(inv.invoice_date, 'YYYY-MM-DD') ||
+                             ', Total Amount: ' || inv.total_amount ||
+                             ', Created At: ' || TO_CHAR(inv.created_at, 'YYYY-MM-DD HH24:MI:SS'));
+    END LOOP;
+END;
+/
+--execution of get_all_invoices
+SET SERVEROUTPUT ON;
+EXEC get_all_invoices;
+
 
 --PAYMENT PACKAGEB SPECIFICATION
 CREATE OR REPLACE PACKAGE payment_pkg AS
@@ -1333,6 +1353,28 @@ BEGIN
 END;
 /
 ---
+
+--procedure to get all payment
+CREATE OR REPLACE PROCEDURE get_all_payments
+IS
+BEGIN
+    FOR pay IN (
+        SELECT payment_id, invoice_id, payment_date, amount_paid, payment_method, status
+        FROM payment
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE('Payment ID: ' || pay.payment_id ||
+                             ', Invoice ID: ' || pay.invoice_id ||
+                             ', Payment Date: ' || TO_CHAR(pay.payment_date, 'YYYY-MM-DD') ||
+                             ', Amount Paid: ' || pay.amount_paid ||
+                             ', Method: ' || pay.payment_method ||
+                             ', Status: ' || pay.status);
+    END LOOP;
+END;
+/
+
+SET SERVEROUTPUT ON;
+EXEC get_all_payments;
+-----
 --------------------------------------------------------------------------
 SET SERVEROUTPUT ON;
 
