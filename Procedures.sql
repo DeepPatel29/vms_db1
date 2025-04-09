@@ -2163,3 +2163,440 @@ EXCEPTION
         DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
 END;
 /
+
+
+CREATE OR REPLACE PROCEDURE customer_search_by_partial_name (
+    p_partial_name IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT cust_id, cust_name, phone, email, address
+        FROM CUSTOMER
+        WHERE UPPER(cust_name) LIKE UPPER('%' || TRIM(p_partial_name) || '%');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Error searching customers by name: ' || SQLERRM);
+END customer_search_by_partial_name;
+/
+
+SET SERVEROUTPUT ON;
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_cust_id NUMBER;
+    v_cust_name VARCHAR2(100);
+    v_phone VARCHAR2(20);
+    v_email VARCHAR2(100);
+    v_address VARCHAR2(200);
+BEGIN
+    customer_search_by_partial_name('te', v_cursor);
+    LOOP
+        FETCH v_cursor INTO v_cust_id, v_cust_name, v_phone, v_email, v_address;
+        EXIT WHEN v_cursor%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE('ID: ' || v_cust_id || ', Name: ' || v_cust_name || ', Email: ' || v_email || ', Address: ' || v_address);
+    END LOOP;
+    CLOSE v_cursor;
+END;
+/
+
+
+CREATE OR REPLACE PROCEDURE customer_search_by_email (
+    p_email IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT cust_id, cust_name, phone, email, address
+        FROM CUSTOMER
+        WHERE UPPER(email) = UPPER(TRIM(p_email));
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Error searching customer by email: ' || SQLERRM);
+END customer_search_by_email;
+/
+
+
+CREATE OR REPLACE PROCEDURE vehicle_search_by_cust_id (
+    p_cust_id IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT vehicle_id, cust_id, licence_plate, make, model, year
+        FROM VEHICLE
+        WHERE cust_id = p_cust_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Error searching vehicles by customer ID: ' || SQLERRM);
+END vehicle_search_by_cust_id;
+/
+
+
+
+CREATE OR REPLACE PROCEDURE employee_search_by_partial_name (
+    p_partial_name IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked
+        FROM EMPLOYEE
+        WHERE UPPER(emp_name) LIKE UPPER('%' || TRIM(p_partial_name) || '%');
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20004, 'Error searching employees by name: ' || SQLERRM);
+END employee_search_by_partial_name;
+/
+
+
+
+CREATE OR REPLACE PROCEDURE employee_search_by_position (
+    p_position IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked
+        FROM EMPLOYEE
+        WHERE UPPER(position) = UPPER(TRIM(p_position));
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Error searching employees by position: ' || SQLERRM);
+END employee_search_by_position;
+/
+
+
+
+CREATE OR REPLACE PROCEDURE appointment_search_by_vehicle_id (
+    p_vehicle_id IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id
+        FROM APPOINTMENT
+        WHERE vehicle_id = p_vehicle_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20006, 'Error searching appointments by vehicle ID: ' || SQLERRM);
+END appointment_search_by_vehicle_id;
+/
+
+
+CREATE OR REPLACE PROCEDURE appointment_search_by_cust_id (
+    p_cust_id IN NUMBER,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id
+        FROM APPOINTMENT
+        WHERE cust_id = p_cust_id;
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20007, 'Error searching appointments by customer ID: ' || SQLERRM);
+END appointment_search_by_cust_id;
+/
+
+
+--Remove Employee (With Appointment Check)
+CREATE OR REPLACE PROCEDURE employee_remove (
+    p_emp_id IN NUMBER
+) AS
+    v_pending_count NUMBER;
+    v_total_count NUMBER;
+BEGIN
+    -- Check for pending appointments (status not 'Completed')
+    SELECT COUNT(*)
+    INTO v_pending_count
+    FROM APPOINTMENT
+    WHERE emp_id = p_emp_id
+    AND UPPER(status) != 'COMPLETED';
+
+    -- Check for total appointments (including completed)
+    SELECT COUNT(*)
+    INTO v_total_count
+    FROM APPOINTMENT
+    WHERE emp_id = p_emp_id;
+
+    IF v_pending_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20008, 'Cannot remove employee: They have ' || v_pending_count || ' pending appointments.');
+    ELSE
+        -- Delete all appointments (pending or completed) for the employee
+        DELETE FROM APPOINTMENT
+        WHERE emp_id = p_emp_id;
+
+        DBMS_OUTPUT.PUT_LINE('Deleted ' || SQL%ROWCOUNT || ' appointment(s) for employee ID ' || p_emp_id);
+
+        -- Now delete the employee
+        DELETE FROM EMPLOYEE
+        WHERE emp_id = p_emp_id;
+
+        IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20009, 'Employee with ID ' || p_emp_id || ' not found.');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Employee with ID ' || p_emp_id || ' successfully removed.');
+            COMMIT;
+        END IF;
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE_APPLICATION_ERROR(-20010, 'Error removing employee: ' || SQLERRM);
+END employee_remove;
+/
+
+
+SET SERVEROUTPUT ON;
+BEGIN
+    employee_remove(8); -- Replace with an existing emp_id
+END;
+/
+
+
+CREATE OR REPLACE PROCEDURE search_service_by_type (
+    p_service_type IN VARCHAR2,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    OPEN p_cursor FOR
+        SELECT service_id, service_type, service_date, status, cost
+        FROM Service
+        WHERE UPPER(service_type) = UPPER(TRIM(p_service_type));
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20007, 'Error searching service by type: ' || SQLERRM);
+END search_service_by_type;
+/
+
+
+
+SET SERVEROUTPUT ON;
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_service_id NUMBER;
+    v_service_type VARCHAR2(100);
+    v_service_date DATE;
+    v_status VARCHAR2(100);
+    v_cost NUMBER;
+BEGIN
+    -- Call the procedure to search for services with type 'Oil Change'
+    search_service_by_type(p_service_type => 'Oil Change', p_cursor => v_cursor);
+
+    -- Fetch and display the results
+    DBMS_OUTPUT.PUT_LINE('Services with Type "Oil Change":');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Service ID | Service Type | Service Date | Status | Cost');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+
+    LOOP
+        FETCH v_cursor
+        INTO v_service_id, v_service_type, v_service_date, v_status, v_cost;
+
+        EXIT WHEN v_cursor%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(
+            v_service_id || ' | ' ||
+            v_service_type || ' | ' ||
+            TO_CHAR(v_service_date, 'YYYY-MM-DD') || ' | ' ||
+            v_status || ' | ' ||
+            v_cost
+        );
+    END LOOP;
+
+    -- Close the cursor
+    CLOSE v_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        -- Ensure the cursor is closed even if an error occurs
+        IF v_cursor%ISOPEN THEN
+            CLOSE v_cursor;
+        END IF;
+END;
+/
+
+
+CREATE OR REPLACE PROCEDURE get_all_invoices (
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    -- Open the cursor to select relevant columns from the INVOICE table
+    OPEN p_cursor FOR
+        SELECT invoice_id, service_id, app_id, invoice_date, total_amount
+        FROM INVOICE;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20008, 'Error retrieving all invoices: ' || SQLERRM);
+END get_all_invoices;
+/
+
+SET SERVEROUTPUT ON;
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_invoice_id NUMBER;
+    v_service_id NUMBER;
+    v_app_id NUMBER;
+    v_invoice_date DATE;
+    v_total_amount NUMBER;
+BEGIN
+    -- Call the procedure to get all invoices
+    get_all_invoices(p_cursor => v_cursor);
+
+    -- Fetch and display the results
+    DBMS_OUTPUT.PUT_LINE('All Invoices:');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Invoice ID | Service ID | App ID | Invoice Date | Total Amount');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+
+    LOOP
+        FETCH v_cursor
+        INTO v_invoice_id, v_service_id, v_app_id, v_invoice_date, v_total_amount;
+
+        EXIT WHEN v_cursor%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(
+            v_invoice_id || ' | ' ||
+            v_service_id || ' | ' ||
+            v_app_id || ' | ' ||
+            TO_CHAR(v_invoice_date, 'YYYY-MM-DD') || ' | ' ||
+            v_total_amount
+        );
+    END LOOP;
+
+    -- Close the cursor
+    CLOSE v_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        -- Ensure the cursor is closed even if an error occurs
+        IF v_cursor%ISOPEN THEN
+            CLOSE v_cursor;
+        END IF;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE get_all_service_inventory (
+    p_item_id IN NUMBER DEFAULT NULL,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    -- Open the cursor to select all columns from the service_inventory table
+    OPEN p_cursor FOR
+        SELECT service_id, item_id, quantity_used
+        FROM service_inventory
+        WHERE (p_item_id IS NULL OR item_id = p_item_id);
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20009, 'Error retrieving all service inventory: ' || SQLERRM);
+END get_all_service_inventory;
+/
+
+
+SET SERVEROUTPUT ON;
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_service_id NUMBER;
+    v_item_id NUMBER;
+    v_quantity_used NUMBER;
+BEGIN
+    -- Call the procedure to get all service inventory records
+    get_all_service_inventory(p_item_id => NULL, p_cursor => v_cursor);
+
+    -- Fetch and display the results
+    DBMS_OUTPUT.PUT_LINE('All Service Inventory:');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Service ID | Item ID | Quantity Used');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+
+    LOOP
+        FETCH v_cursor
+        INTO v_service_id, v_item_id, v_quantity_used;
+
+        EXIT WHEN v_cursor%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(
+            v_service_id || ' | ' ||
+            v_item_id || ' | ' ||
+            v_quantity_used
+        );
+    END LOOP;
+
+    -- Close the cursor
+    CLOSE v_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        -- Ensure the cursor is closed even if an error occurs
+        IF v_cursor%ISOPEN THEN
+            CLOSE v_cursor;
+        END IF;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE search_service_inventory_by_item_id (
+    p_item_id IN NUMBER DEFAULT NULL,
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    -- Open the cursor to select all columns from the service_inventory table
+    OPEN p_cursor FOR
+        SELECT service_id, item_id, quantity_used
+        FROM service_inventory
+        WHERE (p_item_id IS NULL OR item_id = p_item_id);
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20010, 'Error searching service inventory by item ID: ' || SQLERRM);
+END search_service_inventory_by_item_id;
+/
+
+
+SET SERVEROUTPUT ON;
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_service_id NUMBER;
+    v_item_id NUMBER;
+    v_quantity_used NUMBER;
+BEGIN
+    -- Call the procedure to search service inventory records for item_id = 2001
+    search_service_inventory_by_item_id(p_item_id => 2002, p_cursor => v_cursor);
+
+    -- Fetch and display the results
+    DBMS_OUTPUT.PUT_LINE('Service Inventory for Item ID 2002:');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Service ID | Item ID | Quantity Used');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+
+    LOOP
+        FETCH v_cursor
+        INTO v_service_id, v_item_id, v_quantity_used;
+
+        EXIT WHEN v_cursor%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(
+            v_service_id || ' | ' ||
+            v_item_id || ' | ' ||
+            v_quantity_used
+        );
+    END LOOP;
+
+    -- Close the cursor
+    CLOSE v_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        -- Ensure the cursor is closed even if an error occurs
+        IF v_cursor%ISOPEN THEN
+            CLOSE v_cursor;
+        END IF;
+END;
+/
