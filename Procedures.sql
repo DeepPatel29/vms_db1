@@ -2600,3 +2600,75 @@ EXCEPTION
         END IF;
 END;
 /
+
+
+
+CREATE OR REPLACE PROCEDURE get_todays_appointments (
+    p_cursor OUT SYS_REFCURSOR
+) AS
+BEGIN
+    -- Open the cursor to select appointments for today using SYSDATE
+    OPEN p_cursor FOR
+        SELECT app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id
+        FROM APPOINTMENT
+        WHERE TRUNC(app_date) = TRUNC(SYSDATE) -- Dynamically get today's date
+        ORDER BY app_id;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20011, 'Error retrieving today''s appointments: ' || SQLERRM);
+END get_todays_appointments;
+/
+
+
+
+SET SERVEROUTPUT ON;
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_app_id NUMBER;
+    v_cust_id NUMBER;
+    v_vehicle_id NUMBER;
+    v_app_date DATE;
+    v_app_time TIMESTAMP;
+    v_status VARCHAR2(50);
+    v_service_id NUMBER;
+    v_emp_id NUMBER;
+BEGIN
+    -- Call the procedure to get today's appointments
+    get_todays_appointments(p_cursor => v_cursor);
+
+    -- Fetch and display the results
+    DBMS_OUTPUT.PUT_LINE('Today''s Appointments:');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('App ID | Cust ID | Vehicle ID | App Date | App Time | Status | Service ID | Emp ID');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+
+    LOOP
+        FETCH v_cursor
+        INTO v_app_id, v_cust_id, v_vehicle_id, v_app_date, v_app_time, v_status, v_service_id, v_emp_id;
+
+        EXIT WHEN v_cursor%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(
+            v_app_id || ' | ' ||
+            v_cust_id || ' | ' ||
+            v_vehicle_id || ' | ' ||
+            TO_CHAR(v_app_date, 'YYYY-MM-DD') || ' | ' ||
+            TO_CHAR(v_app_time, 'HH24:MI:SS') || ' | ' ||
+            v_status || ' | ' ||
+            v_service_id || ' | ' ||
+            v_emp_id
+        );
+    END LOOP;
+
+    -- Close the cursor
+    CLOSE v_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        IF v_cursor%ISOPEN THEN
+            CLOSE v_cursor;
+        END IF;
+END;
+/
