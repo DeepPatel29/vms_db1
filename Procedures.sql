@@ -2672,3 +2672,70 @@ EXCEPTION
         END IF;
 END;
 /
+
+CREATE OR REPLACE PROCEDURE get_inventory_alerts (
+    p_cursor OUT SYS_REFCURSOR
+) AS
+    v_threshold NUMBER := 10;
+BEGIN
+    -- Open the cursor to select inventory items below threshold
+    OPEN p_cursor FOR
+        SELECT i.item_id, i.item_name, i.quantity, i.price_per_unit, si.service_id, si.quantity_used
+        FROM inventory i
+        LEFT JOIN service_inventory si ON i.item_id = si.item_id
+        WHERE i.quantity < v_threshold
+        ORDER BY i.item_id;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20012, 'Error retrieving inventory alerts: ' || SQLERRM);
+END get_inventory_alerts;
+/
+
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_cursor SYS_REFCURSOR;
+    v_item_id NUMBER;
+    v_item_name VARCHAR2(100);
+    v_quantity NUMBER;
+    v_price_per_unit NUMBER;
+    v_service_id NUMBER;
+    v_quantity_used NUMBER;
+BEGIN
+    -- Call the procedure to get inventory alerts
+    get_inventory_alerts(p_cursor => v_cursor);
+
+    -- Fetch and display the results
+    DBMS_OUTPUT.PUT_LINE('Inventory Alerts:');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Item ID | Item Name | Quantity | Price/Unit | Service ID | Quantity Used');
+    DBMS_OUTPUT.PUT_LINE('--------------------------------------------------');
+
+    LOOP
+        FETCH v_cursor
+        INTO v_item_id, v_item_name, v_quantity, v_price_per_unit, v_service_id, v_quantity_used;
+
+        EXIT WHEN v_cursor%NOTFOUND;
+
+        DBMS_OUTPUT.PUT_LINE(
+            v_item_id || ' | ' ||
+            v_item_name || ' | ' ||
+            v_quantity || ' | ' ||
+            v_price_per_unit || ' | ' ||
+            NVL(TO_CHAR(v_service_id), 'N/A') || ' | ' ||
+            NVL(TO_CHAR(v_quantity_used), 'N/A')
+        );
+    END LOOP;
+
+    -- Close the cursor
+    CLOSE v_cursor;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+        IF v_cursor%ISOPEN THEN
+            CLOSE v_cursor;
+        END IF;
+END;
+/
