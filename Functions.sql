@@ -169,6 +169,399 @@ END;
 /
 
 
+---------------------
+---------------------
+-- Customer Functions Package
+CREATE OR REPLACE PACKAGE customer_functions AS
+    FUNCTION get_customer_count RETURN NUMBER;
+    FUNCTION validate_customer_email(p_email IN VARCHAR2) RETURN BOOLEAN;
+END customer_functions;
+/
+
+CREATE OR REPLACE PACKAGE BODY customer_functions AS
+    FUNCTION get_customer_count RETURN NUMBER IS
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_count FROM CUSTOMER;
+        RETURN v_count;
+    END get_customer_count;
+
+    FUNCTION validate_customer_email(p_email IN VARCHAR2) RETURN BOOLEAN IS
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_count FROM CUSTOMER WHERE email = p_email;
+        RETURN v_count = 0; -- TRUE if email is unique
+    END validate_customer_email;
+END customer_functions;
+/
+
+-- Vehicle Functions Package
+CREATE OR REPLACE PACKAGE vehicle_functions AS
+    FUNCTION get_vehicle_count(p_cust_id IN NUMBER) RETURN NUMBER;
+    FUNCTION get_vehicle_age(p_year IN NUMBER) RETURN NUMBER;
+END vehicle_functions;
+/
+
+CREATE OR REPLACE PACKAGE BODY vehicle_functions AS
+    FUNCTION get_vehicle_count(p_cust_id IN NUMBER) RETURN NUMBER IS
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_count FROM VEHICLE WHERE cust_id = p_cust_id;
+        RETURN v_count;
+    END get_vehicle_count;
+
+    FUNCTION get_vehicle_age(p_year IN NUMBER) RETURN NUMBER IS
+        v_age NUMBER;
+    BEGIN
+        v_age := EXTRACT(YEAR FROM SYSDATE) - p_year;
+        RETURN v_age;
+    END get_vehicle_age;
+END vehicle_functions;
+/
+
+-- Appointment Functions Package
+CREATE OR REPLACE PACKAGE appointment_functions AS
+    FUNCTION get_appointment_count(p_cust_id IN NUMBER) RETURN NUMBER;
+    FUNCTION is_appointment_valid(p_app_date IN DATE) RETURN BOOLEAN;
+END appointment_functions;
+/
+
+CREATE OR REPLACE PACKAGE BODY appointment_functions AS
+    FUNCTION get_appointment_count(p_cust_id IN NUMBER) RETURN NUMBER IS
+        v_count NUMBER;
+    BEGIN
+        SELECT COUNT(*) INTO v_count FROM APPOINTMENT WHERE cust_id = p_cust_id;
+        RETURN v_count;
+    END get_appointment_count;
+
+    FUNCTION is_appointment_valid(p_app_date IN DATE) RETURN BOOLEAN IS
+    BEGIN
+        RETURN p_app_date >= SYSDATE; -- TRUE if appointment date is valid
+    END is_appointment_valid;
+END appointment_functions;
+/
+
+-- Employee Functions Package
+CREATE OR REPLACE PACKAGE employee_functions AS
+    FUNCTION get_employee_salary(p_emp_id IN NUMBER) RETURN NUMBER;
+    FUNCTION get_total_hours_worked(p_emp_id IN NUMBER) RETURN NUMBER;
+END employee_functions;
+/
+
+CREATE OR REPLACE PACKAGE BODY employee_functions AS
+    FUNCTION get_employee_salary(p_emp_id IN NUMBER) RETURN NUMBER IS
+        v_salary NUMBER;
+    BEGIN
+        SELECT salary INTO v_salary FROM EMPLOYEE WHERE emp_id = p_emp_id;
+        RETURN v_salary;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20023, 'No employee found for emp_id: ' || p_emp_id);
+    END get_employee_salary;
+
+    FUNCTION get_total_hours_worked(p_emp_id IN NUMBER) RETURN NUMBER IS
+        v_hours_worked NUMBER;
+    BEGIN
+        SELECT hours_worked INTO v_hours_worked FROM EMPLOYEE WHERE emp_id = p_emp_id;
+        RETURN v_hours_worked;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20024, 'No employee found for emp_id: ' || p_emp_id);
+    END get_total_hours_worked;
+END employee_functions;
+/
+
+-- Execution Blocks
+
+-- Execute get_customer_count
+SET SERVEROUTPUT ON;
+DECLARE
+    v_customer_count NUMBER;
+BEGIN
+    v_customer_count := customer_functions.get_customer_count;
+    DBMS_OUTPUT.PUT_LINE('Total number of customers: ' || v_customer_count);
+END;
+/
+
+-- Execute validate_customer_email
+SET SERVEROUTPUT ON;
+DECLARE
+    v_is_unique BOOLEAN;
+BEGIN
+    v_is_unique := customer_functions.validate_customer_email('john@example.com'); -- Replace with the desired email
+    IF v_is_unique THEN
+        DBMS_OUTPUT.PUT_LINE('The email is unique.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('The email is not unique.');
+    END IF;
+END;
+/
+
+-- Execute get_vehicle_count
+SET SERVEROUTPUT ON;
+DECLARE
+    v_vehicle_count NUMBER;
+BEGIN
+    v_vehicle_count := vehicle_functions.get_vehicle_count(1); -- Replace 1 with the desired customer ID
+    DBMS_OUTPUT.PUT_LINE('Number of vehicles: ' || v_vehicle_count);
+END;
+/
+
+-- Execute get_vehicle_age
+SET SERVEROUTPUT ON;
+DECLARE
+    v_vehicle_age NUMBER;
+BEGIN
+    v_vehicle_age := vehicle_functions.get_vehicle_age(2020); -- Replace 2020 with the desired year
+    DBMS_OUTPUT.PUT_LINE('Age of the vehicle: ' || v_vehicle_age || ' years');
+END;
+/
+
+-- Execute get_appointment_count
+SET SERVEROUTPUT ON;
+DECLARE
+    v_appointment_count NUMBER;
+BEGIN
+    v_appointment_count := appointment_functions.get_appointment_count(1); -- Replace 1 with the desired customer ID
+    DBMS_OUTPUT.PUT_LINE('Number of appointments for customer: ' || v_appointment_count);
+END;
+/
+
+-- Execute is_appointment_valid
+SET SERVEROUTPUT ON;
+DECLARE
+    v_is_valid BOOLEAN;
+BEGIN
+    v_is_valid := appointment_functions.is_appointment_valid(TO_DATE('2023-10-15', 'YYYY-MM-DD')); -- Replace with the desired date
+    IF v_is_valid THEN
+        DBMS_OUTPUT.PUT_LINE('The appointment date is valid.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('The appointment date is not valid.');
+    END IF;
+END;
+/
+
+-- Execute get_employee_salary
+SET SERVEROUTPUT ON;
+DECLARE
+    v_salary NUMBER;
+BEGIN
+    v_salary := employee_functions.get_employee_salary(1); -- Replace 1 with the desired employee ID
+    DBMS_OUTPUT.PUT_LINE('Employee salary: ' || v_salary);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE(SQLERRM);
+END;
+/
+
+-- Execute get_total_hours_worked
+SET SERVEROUTPUT ON;
+DECLARE
+    v_hours_worked NUMBER;
+BEGIN
+    v_hours_worked := employee_functions.get_total_hours_worked(1); -- Replace 1 with the desired employee ID
+    DBMS_OUTPUT.PUT_LINE('Total hours worked by employee: ' || v_hours_worked);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE(SQLERRM);
+END;
+/
+
+-------
+==============================================================================
+--Functions for service, service_inventory and inventory table
+
+--package for functions of service table
+CREATE OR REPLACE PACKAGE service_function_pkg AS
+    FUNCTION get_service_cost(p_service_id IN NUMBER) RETURN NUMBER;
+    FUNCTION is_service_completed(p_service_id IN NUMBER) RETURN BOOLEAN;
+END service_function_pkg;
+/
+CREATE OR REPLACE PACKAGE BODY service_function_pkg AS
+    FUNCTION get_service_cost(p_service_id IN NUMBER)
+    RETURN NUMBER IS
+        v_cost NUMBER(10,2);
+    BEGIN
+        SELECT cost INTO v_cost
+        FROM Service
+        WHERE service_id = p_service_id;
+        
+        RETURN v_cost;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN NULL;
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Error in get_service_cost: ' || SQLERRM);
+    END get_service_cost;
+---
+    FUNCTION is_service_completed(p_service_id IN NUMBER)
+    RETURN BOOLEAN IS
+        v_status VARCHAR2(100);
+    BEGIN
+        SELECT status INTO v_status
+        FROM Service
+        WHERE service_id = p_service_id;
+        
+        RETURN UPPER(v_status) = 'COMPLETED';
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN FALSE;
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20002, 'Error in is_service_completed: ' || SQLERRM);
+    END is_service_completed;
+
+END service_function_pkg;
+/
+
+--test for get_service_cost
+DECLARE
+    -- Declare a variable to store the returned cost
+    v_service_cost NUMBER(10, 2);
+BEGIN
+    -- Call the get_service_cost function
+    v_service_cost := service_function_pkg.get_service_cost(p_service_id => 1003);  
+
+    -- Output the cost
+    IF v_service_cost IS NOT NULL THEN
+        DBMS_OUTPUT.PUT_LINE('Service cost for Service ID : ' || v_service_cost);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('No cost found for Service ID .');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Handle any unexpected errors
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+END;
+/
+
+--test for is_service_completed
+DECLARE
+    v_service_completed BOOLEAN;
+BEGIN
+    -- Call the is_service_completed function
+    v_service_completed := service_function_pkg.is_service_completed(p_service_id => 1003);  
+
+    -- Output the status
+    IF v_service_completed THEN
+        DBMS_OUTPUT.PUT_LINE('Service ID 1003 is completed.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Service ID 1003 is not completed.');
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Handle any unexpected errors
+        DBMS_OUTPUT.PUT_LINE('Error occurred: ' || SQLERRM);
+END;
+/
+
+
+--2 package for functions of inventory table
+CREATE OR REPLACE PACKAGE inventory_function_pkg AS
+    FUNCTION check_low_stock(p_item_id IN NUMBER) RETURN BOOLEAN;
+    FUNCTION get_inventory_value(p_item_id IN NUMBER) RETURN NUMBER;
+END inventory_function_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY inventory_function_pkg AS
+    FUNCTION check_low_stock(p_item_id IN NUMBER)
+    RETURN BOOLEAN IS
+        v_quantity NUMBER;
+    BEGIN
+        SELECT quantity INTO v_quantity
+        FROM inventory
+        WHERE item_id = p_item_id;
+        
+        RETURN v_quantity < 10;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN FALSE;
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20003, 'Error in check_low_stock: ' || SQLERRM);
+    END check_low_stock;
+
+    FUNCTION get_inventory_value(p_item_id IN NUMBER)
+    RETURN NUMBER IS
+        v_value NUMBER(10,2);
+    BEGIN
+        SELECT quantity * price_per_unit INTO v_value
+        FROM inventory
+        WHERE item_id = p_item_id;
+        
+        RETURN v_value;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RETURN NULL;
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20004, 'Error in get_inventory_value: ' || SQLERRM);
+    END get_inventory_value;
+
+END inventory_function_pkg;
+/
+--test check low function
+DECLARE
+    v_is_low_stock BOOLEAN;
+BEGIN
+    -- Test the function for a specific item ID
+    v_is_low_stock := inventory_function_pkg.check_low_stock(2021);
+
+    -- Convert BOOLEAN to 'TRUE' or 'FALSE' for displaying
+    IF v_is_low_stock THEN
+        DBMS_OUTPUT.PUT_LINE('Is the stock Quantity < 10 ? TRUE');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Is the stock Quantity > 10 ? FALSE');
+    END IF;
+END;
+/
+
+-- Test for get_inventory_value function
+DECLARE
+    v_inventory_value NUMBER;
+BEGIN
+    -- Test the function for a specific item ID 
+    v_inventory_value := inventory_function_pkg.get_inventory_value(2041);
+    DBMS_OUTPUT.PUT_LINE('Inventory value: ' || v_inventory_value);
+END;
+/
+
+
+--3 package for functions of servive_inventory table
+CREATE OR REPLACE PACKAGE service_inventory_function_pkg AS
+    FUNCTION get_usage_cost(p_service_id IN NUMBER) RETURN NUMBER;
+END service_inventory_function_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY service_inventory_function_pkg AS
+    FUNCTION get_usage_cost(p_service_id IN NUMBER)
+    RETURN NUMBER IS
+        v_total_cost NUMBER(10,2);
+    BEGIN
+        SELECT SUM(i.price_per_unit * si.quantity_used)
+        INTO v_total_cost
+        FROM service_inventory si
+        JOIN inventory i ON si.item_id = i.item_id
+        WHERE si.service_id = p_service_id;
+        
+        RETURN NVL(v_total_cost, 0);
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20005, 'Error in get_usage_cost: ' || SQLERRM);
+    END get_usage_cost;
+
+END service_inventory_function_pkg;
+/
+
+--test for get usage cost
+SET SERVEROUTPUT ON;
+
+DECLARE
+    v_usage_cost NUMBER;
+BEGIN
+    v_usage_cost := service_inventory_function_pkg.get_usage_cost(1006);
+
+    DBMS_OUTPUT.PUT_LINE('Total usage cost for service_ID 1006: ' || v_usage_cost);
+END;
+/
+
 --INVOICE FUNCTIONS
 --1 a.package specification
 CREATE OR REPLACE PACKAGE invoice_functions_pkg AS

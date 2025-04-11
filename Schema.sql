@@ -1,17 +1,53 @@
--- Create sequences for each table
-CREATE SEQUENCE role_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE user_seq START WITH 1 INCREMENT BY 1;
+-- Drop and recreate all sequences with CYCLE
+DROP SEQUENCE role_seq;
+DROP SEQUENCE user_seq;
+
+-- Role sequence (1 to 50)
+CREATE SEQUENCE role_seq
+    START WITH 1
+    INCREMENT BY 1
+    MINVALUE 1
+    MAXVALUE 50
+    CYCLE;
+
+-- User sequence (51 to 100)
+CREATE SEQUENCE user_seq
+    START WITH 51
+    INCREMENT BY 1
+    MINVALUE 51
+    MAXVALUE 100
+    CYCLE;
+
 CREATE SEQUENCE audit_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE invoice_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE payment_seq START WITH 1 INCREMENT BY 1;
 
-CREATE SEQUENCE customer_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE vehicle_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE appointment_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE employee_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE employee_appointment_seq START WITH 1 INCREMENT BY 1;
-CREATE SEQUENCE service_seq START WITH 1 INCREMENT BY 1;
 
+DROP SEQUENCE invoice_seq;
+CREATE SEQUENCE invoice_seq START WITH 3001 INCREMENT BY 1 MINVALUE 3001 MAXVALUE 4000 CYCLE;
+
+DROP SEQUENCE payment_seq;
+CREATE SEQUENCE payment_seq START WITH 4001 INCREMENT BY 1 MINVALUE 4001 MAXVALUE 5000 CYCLE;
+
+DROP SEQUENCE customer_seq;
+CREATE SEQUENCE customer_seq START WITH 5001 INCREMENT BY 1 MINVALUE 5001 MAXVALUE 7000 CYCLE;
+
+DROP SEQUENCE vehicle_seq;
+CREATE SEQUENCE vehicle_seq START WITH 7001 INCREMENT BY 1 MINVALUE 7001 MAXVALUE 9000 CYCLE;
+
+DROP SEQUENCE appointment_seq;
+CREATE SEQUENCE appointment_seq START WITH 9001 INCREMENT BY 1 MINVALUE 9001 MAXVALUE 12000 CYCLE;
+
+DROP SEQUENCE employee_seq;
+CREATE SEQUENCE employee_seq START WITH 1 INCREMENT BY 1 MINVALUE 1 MAXVALUE 1000 CYCLE;
+
+
+DROP SEQUENCE service_seq;
+CREATE SEQUENCE service_seq START WITH 1001 INCREMENT BY 1 MINVALUE 1001 MAXVALUE 2000 CYCLE;
+
+DROP SEQUENCE inventory_seq;
+CREATE SEQUENCE inventory_seq START WITH 2001 INCREMENT BY 1 MINVALUE 2001 MAXVALUE 3000 CYCLE;
+
+DROP SEQUENCE employee_appointment_seq;
+CREATE SEQUENCE employee_appointment_seq START WITH 12001 INCREMENT BY 1 MINVALUE 12001 MAXVALUE 15000 CYCLE;
 
 -- Create the ROLE table
 CREATE TABLE ROLE (
@@ -19,15 +55,26 @@ CREATE TABLE ROLE (
     role_name VARCHAR2(100) 
 );
 
+-- Add NOT NULL and UNIQUE constraint to role_name
+ALTER TABLE ROLE
+MODIFY (role_name VARCHAR2(100) NOT NULL);
+
+ALTER TABLE ROLE
+ADD CONSTRAINT uk_role_name UNIQUE (role_name);
+
 -- Create the USER_TABLE 
 CREATE TABLE USER_TABLE (
     user_id NUMBER PRIMARY KEY,
     role_id NUMBER,
     username VARCHAR2(100) NOT NULL,
     Email VARCHAR2(100) UNIQUE NOT NULL,
-    Password VARCHAR2(100) NOT NULL,
+    Password VARCHAR2(256) NOT NULL,
     FOREIGN KEY (role_id) REFERENCES ROLE(role_id)
 );
+
+-- Modify USER_TABLE table(adding default role_id to be 2(Sales Representative))
+ALTER TABLE USER_TABLE
+MODIFY (role_id NUMBER DEFAULT 2);
 
 -- Create the AUDIT_LOG table 
 CREATE TABLE AUDIT_LOG (
@@ -83,17 +130,6 @@ CREATE TABLE CUSTOMER (
     address VARCHAR2(255)
 );
 
--- Insert data into CUSTOMER table
-INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
-(customer_seq.NEXTVAL, 'Dev Patel', '9876543210', 'dev@example.com', '123 MG Road, Mumbai');
-
-INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
-(customer_seq.NEXTVAL, 'Vatsal Shah', '8765432109', 'vatsal@example.com', '456 Juhu Beach, Mumbai');
-
-INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
-(customer_seq.NEXTVAL, 'Deep Singh', '7654321098', 'deep@example.com', '789 Marine Drive, Mumbai');
-
-
 -- Create VEHICLE table 
 CREATE TABLE VEHICLE (
     Vehicle_id NUMBER PRIMARY KEY,
@@ -105,15 +141,6 @@ CREATE TABLE VEHICLE (
     FOREIGN KEY (cust_id) REFERENCES CUSTOMER(cust_id)
 );
 
--- Insert data into VEHICLE table
-INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year) VALUES
-(vehicle_seq.NEXTVAL, 1, 'MH01A1234', 'Toyota', 'Corolla', 2020);
-
-INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year) VALUES
-(vehicle_seq.NEXTVAL, 2, 'MH02B5678', 'Honda', 'Civic', 2019);
-
-INSERT INTO VEHICLE (Vehicle_id, cust_id, Licence_plate, Make, Model, Year) VALUES
-(vehicle_seq.NEXTVAL, 3, 'MH03C9101', 'Maruti', 'Swift', 2021);
 
 -- Create EMPLOYEE table with sequence
 CREATE TABLE EMPLOYEE (
@@ -126,16 +153,6 @@ CREATE TABLE EMPLOYEE (
     hire_date DATE,
     hours_worked NUMBER(5, 2)
 );
-
--- Insert data into EMPLOYEE table
-INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
-(employee_seq.NEXTVAL, 'John Doe', 'Mechanic', '1234567890', 'john@example.com', 50000.00, TO_DATE('2020-01-15', 'YYYY-MM-DD'), 40.5);
-
-INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
-(employee_seq.NEXTVAL, 'Jane Smith', 'Service Advisor', '0987654321', 'jane@example.com', 45000.00, TO_DATE('2019-06-20', 'YYYY-MM-DD'), 38.25);
-
-INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
-(employee_seq.NEXTVAL, 'Alice Johnson', 'Manager', '1928374650', 'alice@example.com', 60000.00, TO_DATE('2018-03-25', 'YYYY-MM-DD'), 45.75);
 
 -- Create the APPOINTMENT table 
 CREATE TABLE APPOINTMENT (
@@ -153,16 +170,6 @@ CREATE TABLE APPOINTMENT (
     FOREIGN KEY (service_id) REFERENCES SERVICE(service_id)
 );
 
--- Insert sample data into APPOINTMENT table
-INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
-(appointment_seq.NEXTVAL, 1, 1, TO_DATE('2023-10-01', 'YYYY-MM-DD'), TO_TIMESTAMP('09:00:00', 'HH24:MI:SS'), 'Scheduled', 1, 1);
-
-INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
-(appointment_seq.NEXTVAL, 2, 2, TO_DATE('2023-10-05', 'YYYY-MM-DD'), TO_TIMESTAMP('14:30:00', 'HH24:MI:SS'), 'Completed', 2, 2);
-
-INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
-(appointment_seq.NEXTVAL, 3, 3, TO_DATE('2023-10-10', 'YYYY-MM-DD'), TO_TIMESTAMP('10:45:00', 'HH24:MI:SS'), 'Pending', 3, 3);
-
 -- Create the employee_appointment 
 CREATE TABLE employee_appointment (
     employee_id NUMBER,
@@ -172,19 +179,6 @@ CREATE TABLE employee_appointment (
     FOREIGN KEY (employee_id) REFERENCES EMPLOYEE(emp_id),
     FOREIGN KEY (appointment_id) REFERENCES APPOINTMENT(app_id)
 );
-
--- Insert sample data into employee_appointment table
-INSERT INTO employee_appointment (employee_id, appointment_id, role) VALUES
-(1, 1, 'Mechanic');
-
-INSERT INTO employee_appointment (employee_id, appointment_id, role) VALUES
-(2, 2, 'Service Advisor');
-
-INSERT INTO employee_appointment (employee_id, appointment_id, role) VALUES
-(3, 3, 'Manager');
-
--- Commit the transaction
-COMMIT;
 
 
 --create service table
@@ -218,71 +212,294 @@ CREATE TABLE PAYMENT (
     FOREIGN KEY (invoice_id) REFERENCES INVOICE(invoice_id)
 );
 
---insert into service table
-INSERT INTO Service (service_type, service_date, status, cost)
-VALUES ('Oil Change', TO_DATE('2024-02-01', 'YYYY-MM-DD'), 'Completed', 50.00);
 
-INSERT INTO Service (service_type, service_date, status, cost)
-VALUES ('Brake Replacement', TO_DATE('2024-02-02', 'YYYY-MM-DD'), 'Pending', 200.00);
+-- Create service table with sequence
+CREATE TABLE Service (
+    service_id NUMBER PRIMARY KEY,
+    service_type VARCHAR2(100),
+    service_date DATE,
+    status VARCHAR2(100),
+    cost NUMBER(10,2)
+);
 
-INSERT INTO Service (service_type, service_date, status, cost)
-VALUES ('Tire Rotation', TO_DATE('2024-02-03', 'YYYY-MM-DD'), 'Completed', 40.00);
-
--- Insert data into INVOICE table
-INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount)
-VALUES (invoice_seq.NEXTVAL, 1, 1, TO_DATE('01-02-2024', 'DD-MM-YYYY'), 50.00);  
-
-INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount)
-VALUES (invoice_seq.NEXTVAL, 2, 2, TO_DATE('02-02-2024', 'DD-MM-YYYY'), 200.00); 
-
-INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount)
-VALUES (invoice_seq.NEXTVAL, 3, 3, TO_DATE('03-02-2024', 'DD-MM-YYYY'), 40.00); 
-
--- Insert data into PAYMENT table
-INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status)
-VALUES (payment_seq.NEXTVAL, 1, TO_DATE('01-02-2024', 'DD-MM-YYYY'), 50.00, 'Credit Card', 'completed'); 
-
-INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status)
-VALUES (payment_seq.NEXTVAL, 2, TO_DATE('02-02-2024', 'DD-MM-YYYY'), 200.00, 'Cash', 'Completed');
-
-INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status)
-VALUES (payment_seq.NEXTVAL, 3, TO_DATE('03-02-2024', 'DD-MM-YYYY'), 40.00, 'Cash', 'completed'); 
-
-
-
---create inventory table
+-- Create inventory table with sequence
 CREATE TABLE inventory (
-    item_id        NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,  
-    item_name      VARCHAR2(100),                              
-    quantity       NUMBER,                                   
-    price_per_unit NUMBER(10, 2)                              
+    item_id NUMBER PRIMARY KEY,
+    item_name VARCHAR2(100),
+    quantity NUMBER,
+    price_per_unit NUMBER(10, 2)
 );
 
--- create service_inventory table
 CREATE TABLE service_inventory (
-    service_id     NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,  
-    item_id        NUMBER ,                                      
-    quantity_used  NUMBER,                                      
-    CONSTRAINT fk_item_id FOREIGN KEY (item_id)                         
-    REFERENCES inventory(item_id)
+    service_id NUMBER,
+    item_id NUMBER,
+    quantity_used NUMBER,
+    
+    -- Composite Primary Key
+    CONSTRAINT pk_service_inventory PRIMARY KEY (service_id, item_id),
+    
+    -- Foreign Key Constraints
+    CONSTRAINT fk_service_id FOREIGN KEY (service_id)
+        REFERENCES service(service_id),
+        
+    CONSTRAINT fk_item_id FOREIGN KEY (item_id)
+        REFERENCES inventory(item_id)
 );
 
 
---Insert into inventory table
-INSERT INTO inventory (item_name, quantity, price_per_unit)
-VALUES ('Engine Oil', 100, 15.50);
 
-INSERT INTO inventory (item_name, quantity, price_per_unit)
-VALUES ('Brake Pads', 50, 40.00);
+--Updating table
 
---Insert data into service_inventory table
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Aarav Sharma', '9123456789', 'aarav@example.com', '101 Park Street, Delhi');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Priya Gupta', '9234567890', 'priya@example.com', '22 Lajpat Nagar, Delhi');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Rohan Patel', '9345678901', 'rohan@example.com', '34 Andheri West, Mumbai');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Neha Kapoor', '9456789012', 'neha@example.com', '56 Banjara Hills, Hyderabad');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Vikram Singh', '9567890123', 'vikram@example.com', '78 MG Road, Bangalore');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Ananya Iyer', '9678901234', 'ananya@example.com', '90 Anna Nagar, Chennai');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Karan Malhotra', '9789012345', 'karan@example.com', '12 Salt Lake, Kolkata');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Sneha Reddy', '9890123456', 'sneha@example.com', '23 Jubilee Hills, Hyderabad');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Arjun Nair', '9901234567', 'arjun@example.com', '45 Koramangala, Bangalore');
+INSERT INTO CUSTOMER (cust_id, cust_name, phone, email, address) VALUES
+(customer_seq.NEXTVAL, 'Pooja Desai', '9012345678', 'pooja@example.com', '67 Vashi, Navi Mumbai');
 
-INSERT INTO service_inventory (item_id, quantity_used)
-VALUES (1, 2); 
-
-INSERT INTO service_inventory (item_id, quantity_used)
-VALUES (2, 1); 
 
 
-select * from inventory
-select * from service_inventory
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5001, 'DL01X4321', 'Hyundai', 'Creta', 2021);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5002, 'DL02Y8765', 'Maruti', 'Baleno', 2020);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5003, 'MH03Z1234', 'Tata', 'Nexon', 2022);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5004, 'TS04A5678', 'Honda', 'City', 2019);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5005, 'KA05B9101', 'Toyota', 'Innova', 2023);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5006, 'TN06C2345', 'Kia', 'Seltos', 2021);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5007, 'WB07D6789', 'Mahindra', 'XUV500', 2020);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5008, 'TS08E0123', 'Skoda', 'Octavia', 2022);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5009, 'KA09F4567', 'Renault', 'Duster', 2018);
+INSERT INTO VEHICLE (vehicle_id, cust_id, licence_plate, make, model, year) VALUES
+(vehicle_seq.NEXTVAL, 5010, 'MH10G8901', 'Ford', 'EcoSport', 2021);
+
+
+
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Rahul Verma', 'Mechanic', '9123456780', 'rahul@example.com', 52000.00, TO_DATE('2021-02-10', 'YYYY-MM-DD'), 42.5);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Meera Joshi', 'Service Advisor', '9234567891', 'meera@example.com', 48000.00, TO_DATE('2020-07-15', 'YYYY-MM-DD'), 39.0);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Suresh Kumar', 'Manager', '9345678902', 'suresh@example.com', 65000.00, TO_DATE('2019-04-01', 'YYYY-MM-DD'), 45.0);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Lakshmi Nair', 'Mechanic', '9456789013', 'lakshmi@example.com', 51000.00, TO_DATE('2022-01-20', 'YYYY-MM-DD'), 41.25);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Amitabh Roy', 'Service Advisor', '9567890124', 'amitabh@example.com', 47000.00, TO_DATE('2021-09-05', 'YYYY-MM-DD'), 38.75);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Divya Pillai', 'Receptionist', '9678901235', 'divya@example.com', 40000.00, TO_DATE('2020-11-10', 'YYYY-MM-DD'), 37.5);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Nikhil Bose', 'Mechanic', '9789012346', 'nikhil@example.com', 53000.00, TO_DATE('2022-03-15', 'YYYY-MM-DD'), 43.0);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Shalini Menon', 'Manager', '9890123457', 'shalini@example.com', 68000.00, TO_DATE('2018-12-01', 'YYYY-MM-DD'), 46.5);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Tarun Das', 'Service Advisor', '9901234568', 'tarun@example.com', 46000.00, TO_DATE('2021-06-25', 'YYYY-MM-DD'), 39.5);
+INSERT INTO EMPLOYEE (emp_id, emp_name, position, emp_phn, email, salary, hire_date, hours_worked) VALUES
+(employee_seq.NEXTVAL, 'Kavita Rane', 'Mechanic', '9012345679', 'kavita@example.com', 50000.00, TO_DATE('2022-08-10', 'YYYY-MM-DD'), 40.0);
+
+
+
+
+
+
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5001, 7001, TO_DATE('2025-04-05', 'YYYY-MM-DD'), TO_TIMESTAMP('10:00:00', 'HH24:MI:SS'), 'Scheduled', 1001, 1);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5002, 7002, TO_DATE('2025-04-06', 'YYYY-MM-DD'), TO_TIMESTAMP('11:30:00', 'HH24:MI:SS'), 'Completed', 1002, 2);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5003, 7003, TO_DATE('2025-04-07', 'YYYY-MM-DD'), TO_TIMESTAMP('09:15:00', 'HH24:MI:SS'), 'Pending', 1003, 3);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5004, 7004, TO_DATE('2025-04-08', 'YYYY-MM-DD'), TO_TIMESTAMP('14:00:00', 'HH24:MI:SS'), 'Scheduled', 1004, 4);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5005, 7005, TO_DATE('2025-04-09', 'YYYY-MM-DD'), TO_TIMESTAMP('15:45:00', 'HH24:MI:SS'), 'Completed', 1005, 5);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5006, 7006, TO_DATE('2025-04-10', 'YYYY-MM-DD'), TO_TIMESTAMP('10:30:00', 'HH24:MI:SS'), 'Pending', 1006, 6);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5007, 7007, TO_DATE('2025-04-11', 'YYYY-MM-DD'), TO_TIMESTAMP('13:00:00', 'HH24:MI:SS'), 'Scheduled', 1007, 7);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5008, 7008, TO_DATE('2025-04-12', 'YYYY-MM-DD'), TO_TIMESTAMP('16:15:00', 'HH24:MI:SS'), 'Completed', 1008, 8);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5009, 7009, TO_DATE('2025-04-13', 'YYYY-MM-DD'), TO_TIMESTAMP('09:45:00', 'HH24:MI:SS'), 'Pending', 1009, 9);
+INSERT INTO APPOINTMENT (app_id, cust_id, vehicle_id, app_date, app_time, status, service_id, emp_id) VALUES
+(appointment_seq.NEXTVAL, 5010, 7010, TO_DATE('2025-04-14', 'YYYY-MM-DD'), TO_TIMESTAMP('12:30:00', 'HH24:MI:SS'), 'Scheduled', 1010, 10);
+
+
+
+
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(1, 9001, 'Mechanic');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(2, 9002, 'Service Advisor');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(3, 9003, 'Manager');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(4, 9004, 'Mechanic');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(5, 9005, 'Service Advisor');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(6, 9006, 'Receptionist');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(7, 9007, 'Mechanic');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(8, 9008, 'Manager');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(9, 9009, 'Service Advisor');
+INSERT INTO EMPLOYEE_APPOINTMENT (employee_id, appointment_id, role) VALUES
+(10, 9010, 'Mechanic');
+
+
+
+
+
+
+
+
+
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Engine Tune-Up', TO_DATE('2025-04-05', 'YYYY-MM-DD'), 'Completed', 120.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Wheel Alignment', TO_DATE('2025-04-06', 'YYYY-MM-DD'), 'Pending', 80.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'AC Repair', TO_DATE('2025-04-07', 'YYYY-MM-DD'), 'Completed', 250.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Battery Replacement', TO_DATE('2025-04-08', 'YYYY-MM-DD'), 'Scheduled', 150.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Transmission Check', TO_DATE('2025-04-09', 'YYYY-MM-DD'), 'Completed', 300.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Car Wash', TO_DATE('2025-04-10', 'YYYY-MM-DD'), 'Pending', 30.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Suspension Repair', TO_DATE('2025-04-11', 'YYYY-MM-DD'), 'Completed', 400.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Paint Touch-Up', TO_DATE('2025-04-12', 'YYYY-MM-DD'), 'Scheduled', 100.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Exhaust Repair', TO_DATE('2025-04-13', 'YYYY-MM-DD'), 'Completed', 180.00);
+INSERT INTO Service (service_id, service_type, service_date, status, cost) VALUES
+(service_seq.NEXTVAL, 'Full Service', TO_DATE('2025-04-14', 'YYYY-MM-DD'), 'Pending', 500.00);
+
+
+
+
+
+
+
+
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Spark Plugs', 200, 10.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Alignment Kit', 50, 25.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'AC Compressor', 30, 150.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Car Battery', 80, 120.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Transmission Fluid', 100, 20.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Cleaning Solution', 150, 5.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Shock Absorbers', 40, 200.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Paint Can', 60, 30.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Exhaust Pipe', 25, 100.00);
+INSERT INTO inventory (item_id, item_name, quantity, price_per_unit) VALUES
+(inventory_seq.NEXTVAL, 'Oil Filter', 120, 15.00);
+
+
+
+
+
+
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1001, 9001, TO_DATE('2025-04-05', 'YYYY-MM-DD'), 120.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1002, 9002, TO_DATE('2025-04-06', 'YYYY-MM-DD'), 80.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1003, 9003, TO_DATE('2025-04-07', 'YYYY-MM-DD'), 250.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1004, 9004, TO_DATE('2025-04-08', 'YYYY-MM-DD'), 150.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1005, 9005, TO_DATE('2025-04-09', 'YYYY-MM-DD'), 300.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1006, 9006, TO_DATE('2025-04-10', 'YYYY-MM-DD'), 30.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1007, 9007, TO_DATE('2025-04-11', 'YYYY-MM-DD'), 400.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1008, 9008, TO_DATE('2025-04-12', 'YYYY-MM-DD'), 100.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1009, 9009, TO_DATE('2025-04-13', 'YYYY-MM-DD'), 180.00);
+INSERT INTO INVOICE (invoice_id, service_id, app_id, invoice_date, total_amount) VALUES
+(invoice_seq.NEXTVAL, 1010, 9010, TO_DATE('2025-04-14', 'YYYY-MM-DD'), 500.00);
+
+
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3001, TO_DATE('2025-04-05', 'YYYY-MM-DD'), 120.00, 'Credit Card', 'Completed');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3002, TO_DATE('2025-04-06', 'YYYY-MM-DD'), 80.00, 'Cash', 'Pending');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3003, TO_DATE('2025-04-07', 'YYYY-MM-DD'), 250.00, 'Debit Card', 'Completed');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3004, TO_DATE('2025-04-08', 'YYYY-MM-DD'), 150.00, 'UPI', 'Completed');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3005, TO_DATE('2025-04-09', 'YYYY-MM-DD'), 300.00, 'Credit Card', 'Pending');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3006, TO_DATE('2025-04-10', 'YYYY-MM-DD'), 30.00, 'Cash', 'Completed');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3007, TO_DATE('2025-04-11', 'YYYY-MM-DD'), 400.00, 'Debit Card', 'Completed');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3008, TO_DATE('2025-04-12', 'YYYY-MM-DD'), 100.00, 'UPI', 'Pending');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3009, TO_DATE('2025-04-13', 'YYYY-MM-DD'), 180.00, 'Credit Card', 'Completed');
+
+INSERT INTO PAYMENT (payment_id, invoice_id, payment_date, amount_paid, payment_method, status) VALUES
+(payment_seq.NEXTVAL, 3010, TO_DATE('2025-04-14', 'YYYY-MM-DD'), 500.00, 'Cash', 'Completed');
+
+
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1001, 2001, 4);  
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1002, 2002, 1); 
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1003, 2003, 1);  
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1004, 2004, 1);  
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1005, 2005, 5); 
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1006, 2006, 2); 
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1007, 2007, 2);  
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1008, 2008, 1); 
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1009, 2009, 1); 
+INSERT INTO service_inventory (service_id, item_id, quantity_used) VALUES
+(1010, 2010, 2);  
